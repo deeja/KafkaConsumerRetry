@@ -3,7 +3,7 @@ using KafkaConsumerRetry.Configuration;
 
 namespace KafkaConsumerRetry.Services
 {
-    public interface ITopicManagement
+    public interface ITopicManager
     {
         Task EnsureTopicSettings(TopicNaming topicsNaming);
     }

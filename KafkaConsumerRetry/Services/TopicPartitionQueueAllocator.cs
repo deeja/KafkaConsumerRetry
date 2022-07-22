@@ -2,7 +2,7 @@
 using Confluent.Kafka;
 
 namespace KafkaConsumerRetry.Services {
-    public class TopicPartitionQueueAllocator : IConsumeResultAllocator {
+    public class TopicPartitionQueueAllocator : ITopicPartitionQueueAllocator {
         private readonly IMessageValueHandler _handler;
         private readonly Dictionary<TopicPartition, TopicPartitionQueue> _partitionQueues = new();
         private readonly IProducer<byte[], byte[]> _producer;
