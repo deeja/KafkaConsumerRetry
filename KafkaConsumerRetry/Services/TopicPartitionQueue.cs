@@ -5,12 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 
-namespace KafkaConsumerRetry
+namespace KafkaConsumerRetry.Services
 {
     /// <summary>
     ///     Rolls through queued messages, working on them and pushing them to the next retry if there is a failure
     /// </summary>
-    internal class TopicPartitionQueue: IDisposable
+    internal class TopicPartitionQueue : IDisposable
     {
         private readonly IConsumer<byte[], byte[]> _consumer;
 
@@ -20,35 +20,45 @@ namespace KafkaConsumerRetry
         private readonly ConcurrentQueue<ConsumeResult<byte[], byte[]>> _consumeResultQueue = new();
 
         private readonly IMessageValueHandler _messageValueHandler;
+        private readonly IDelayCalculator _delayCalculator;
 
         private readonly string _nextTopic;
         private readonly string _retryGroupId;
         private readonly IProducer<byte[], byte[]> _retryProducer;
         private readonly TopicPartition _topicPartition;
-
+        private readonly CancellationTokenSource _workerTokenSource;
         private readonly string LastExceptionKey = "LAST_EXCEPTION";
 
         private readonly int PAUSE_THRESHOLD = 5;
         private readonly string RetryConsumerGroupIdKey = "RETRY_GROUP_ID";
 
         private bool _isPaused;
-        private readonly CancellationTokenSource _workerTokenSource;
+        private readonly int _retryIndex;
 
         public TopicPartitionQueue(IMessageValueHandler messageValueHandler,
+            IDelayCalculator delayCalculator,
             IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
-            IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic)
+            IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex)
         {
             _messageValueHandler = messageValueHandler;
+            _delayCalculator = delayCalculator;
             _workerTokenSource = new CancellationTokenSource();
             _consumer = consumer;
             _topicPartition = topicPartition;
             _retryProducer = retryProducer;
             _retryGroupId = retryGroupId;
             _nextTopic = nextTopic;
+            _retryIndex = retryIndex;
             // TODO: Tie cancellation to the host applications lifetime
-            
+
             _ = Task.Factory.StartNew(async () => await DoWorkAsync(), _workerTokenSource.Token,
                 TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        public void Dispose()
+        {
+            // Do not dispose the consumer or the producer
+            _workerTokenSource.Dispose();
         }
 
         /// <summary>
@@ -58,20 +68,21 @@ namespace KafkaConsumerRetry
         {
             var cancellationToken = _workerTokenSource.Token;
             while (!cancellationToken.IsCancellationRequested)
-                if (_consumeResultQueue.TryDequeue(out var allocation))
+                if (_consumeResultQueue.TryDequeue(out var consumeResult))
                 {
-                    try
-                    {
-                        await _messageValueHandler.HandleAsync(allocation.Message, cancellationToken);
+                    try {
+                        var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
+                        await Task.Delay(delayTime, cancellationToken);
+                        await _messageValueHandler.HandleAsync(consumeResult.Message, cancellationToken);
                     }
                     catch (Exception handledException)
                     {
-                        AppendException(handledException, _retryGroupId, allocation.Message);
-                        await _retryProducer.ProduceAsync(_nextTopic, allocation.Message,
+                        AppendException(handledException, _retryGroupId, consumeResult.Message);
+                        await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message,
                             cancellationToken);
                     }
 
-                    _consumer.StoreOffset(allocation);
+                    _consumer.StoreOffset(consumeResult);
                 }
                 else
                 {
@@ -100,10 +111,10 @@ namespace KafkaConsumerRetry
         /// <remarks>
         ///     This code runs per topic partition, so access is assumed to be sequential (unlikely to have multiple threads)
         /// </remarks>
-        /// <param name="allocation"></param>
-        public void AddAllocation(ConsumeResult<byte[], byte[]> allocation)
+        /// <param name="consumeResult"></param>
+        public void Enqueue(ConsumeResult<byte[], byte[]> consumeResult)
         {
-            _consumeResultQueue.Enqueue(allocation);
+            _consumeResultQueue.Enqueue(consumeResult);
 
             // if there are more in the queue than there should be, then pause the partition to halt the pulling of those messages
             if (_consumeResultQueue.Count > PAUSE_THRESHOLD)
@@ -114,17 +125,11 @@ namespace KafkaConsumerRetry
         }
 
         /// <summary>
-        /// Call when the topic partition has been revoked
+        ///     Call when the topic partition has been revoked
         /// </summary>
         public void Cancel()
         {
             _workerTokenSource.Cancel();
-        }
-
-        public void Dispose()
-        {
-            // Do not dispose the consumer or the producer
-            _workerTokenSource.Dispose();
         }
     }
 }

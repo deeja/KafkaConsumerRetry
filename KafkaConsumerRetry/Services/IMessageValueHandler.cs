@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Confluent.Kafka;
 
-namespace KafkaConsumerRetry
+namespace KafkaConsumerRetry.Services
 {
     public interface IMessageValueHandler
     {

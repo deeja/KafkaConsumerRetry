@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Confluent.Kafka;
 
-namespace KafkaConsumerRetry
+namespace KafkaConsumerRetry.Configuration
 {
     public class RetryServiceConfig
     {

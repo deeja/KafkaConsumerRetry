@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using KafkaConsumerRetry.Configuration;
 
-namespace KafkaConsumerRetry
+namespace KafkaConsumerRetry.Services
 {
     public interface ITopicManagement
     {
