@@ -1,0 +1,130 @@
+﻿using System;
+using System.Collections.Concurrent;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Confluent.Kafka;
+
+namespace KafkaConsumerRetry
+{
+    /// <summary>
+    ///     Rolls through queued messages, working on them and pushing them to the next retry if there is a failure
+    /// </summary>
+    internal class TopicPartitionQueue: IDisposable
+    {
+        private readonly IConsumer<byte[], byte[]> _consumer;
+
+        /// <summary>
+        ///     Tasks that are to be run by this context
+        /// </summary>
+        private readonly ConcurrentQueue<ConsumeResult<byte[], byte[]>> _consumeResultQueue = new();
+
+        private readonly IMessageValueHandler _messageValueHandler;
+
+        private readonly string _nextTopic;
+        private readonly string _retryGroupId;
+        private readonly IProducer<byte[], byte[]> _retryProducer;
+        private readonly TopicPartition _topicPartition;
+
+        private readonly string LastExceptionKey = "LAST_EXCEPTION";
+
+        private readonly int PAUSE_THRESHOLD = 5;
+        private readonly string RetryConsumerGroupIdKey = "RETRY_GROUP_ID";
+
+        private bool _isPaused;
+        private readonly CancellationTokenSource _workerTokenSource;
+
+        public TopicPartitionQueue(IMessageValueHandler messageValueHandler,
+            IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
+            IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic)
+        {
+            _messageValueHandler = messageValueHandler;
+            _workerTokenSource = new CancellationTokenSource();
+            _consumer = consumer;
+            _topicPartition = topicPartition;
+            _retryProducer = retryProducer;
+            _retryGroupId = retryGroupId;
+            _nextTopic = nextTopic;
+            // TODO: Tie cancellation to the host applications lifetime
+            
+            _ = Task.Factory.StartNew(async () => await DoWorkAsync(), _workerTokenSource.Token,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        /// <summary>
+        ///     Process items in the queue for this specific topic partition
+        /// </summary>
+        private async Task DoWorkAsync()
+        {
+            var cancellationToken = _workerTokenSource.Token;
+            while (!cancellationToken.IsCancellationRequested)
+                if (_consumeResultQueue.TryDequeue(out var allocation))
+                {
+                    try
+                    {
+                        await _messageValueHandler.HandleAsync(allocation.Message, cancellationToken);
+                    }
+                    catch (Exception handledException)
+                    {
+                        AppendException(handledException, _retryGroupId, allocation.Message);
+                        await _retryProducer.ProduceAsync(_nextTopic, allocation.Message,
+                            cancellationToken);
+                    }
+
+                    _consumer.StoreOffset(allocation);
+                }
+                else
+                {
+                    if (_isPaused)
+                    {
+                        _consumer.Resume(new[] {_topicPartition});
+                        _isPaused = false;
+                    }
+
+                    await Task.Delay(100, cancellationToken);
+                    // TODO: semaphore or something here rather than a delay
+                }
+        }
+
+        private void AppendException(Exception exception, string retryConsumerGroupId,
+            Message<byte[], byte[]> consumeMessage)
+        {
+            consumeMessage.Headers.Remove(LastExceptionKey);
+            consumeMessage.Headers.Add(LastExceptionKey, Encoding.UTF8.GetBytes(exception.ToString()));
+            consumeMessage.Headers.Remove(RetryConsumerGroupIdKey);
+            consumeMessage.Headers.Add(RetryConsumerGroupIdKey, Encoding.UTF8.GetBytes(retryConsumerGroupId));
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <remarks>
+        ///     This code runs per topic partition, so access is assumed to be sequential (unlikely to have multiple threads)
+        /// </remarks>
+        /// <param name="allocation"></param>
+        public void AddAllocation(ConsumeResult<byte[], byte[]> allocation)
+        {
+            _consumeResultQueue.Enqueue(allocation);
+
+            // if there are more in the queue than there should be, then pause the partition to halt the pulling of those messages
+            if (_consumeResultQueue.Count > PAUSE_THRESHOLD)
+            {
+                _consumer.Pause(new[] {_topicPartition});
+                _isPaused = true;
+            }
+        }
+
+        /// <summary>
+        /// Call when the topic partition has been revoked
+        /// </summary>
+        public void Cancel()
+        {
+            _workerTokenSource.Cancel();
+        }
+
+        public void Dispose()
+        {
+            // Do not dispose the consumer or the producer
+            _workerTokenSource.Dispose();
+        }
+    }
+}
