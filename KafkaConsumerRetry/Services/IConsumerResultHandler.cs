@@ -20,7 +20,8 @@ namespace KafkaConsumerRetry.Services
         }
 
         public Task HandleAsync(ConsumeResult<byte[], byte[]> message, CancellationToken cancellationToken) {
-            _logger.LogInformation("Message received -Topic: {TopicPartitionOffset}", message.TopicPartitionOffset);
+            _logger.LogInformation("Message received - Topic: {TopicPartitionOffset}", message.TopicPartitionOffset);
+            return Task.CompletedTask;
         }
     }
 }
