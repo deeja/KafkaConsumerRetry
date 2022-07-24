@@ -1,14 +1,11 @@
 services:
-  zoo1:
-    image: confluentinc/cp-zookeeper:latest
-    hostname: zoo1
-    container_name: zoo1
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_SERVER_ID: 1
-      ZOOKEEPER_SERVERS: zoo1:2888:3888
+      - 9000:8080
 
   kafka1:
     image: confluentinc/cp-kafka:latest
@@ -34,3 +31,11 @@ services:
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
     depends_on:
       - zoo1
+  redpanda-console:
+    image: docker.redpanda.com/vectorized/console:master-0a8fce8
+    ports:
+      - "8080:8080"
+    hostname: redpanda-console
+    container_name: redpanda-console
+    environment:
+      KAFKA_BROKERS: kafka1:19092

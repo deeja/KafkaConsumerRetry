@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,48 +9,30 @@ namespace KafkaConsumerRetry.Services {
     /// <summary>
     ///     Starts and subscribes to messages
     /// </summary>
-    public class ConsumerFactory : IConsumerFactory {
+    public class ReliableRetryRunner : IReliableRetryRunner {
         private readonly RetryServiceConfig _config;
+        private readonly IConsumerFactory _consumerFactory;
         private readonly ITopicPartitionQueueManager _queueManager;
 
-        public ConsumerFactory(RetryServiceConfig config,
+        public ReliableRetryRunner(RetryServiceConfig config, IConsumerFactory consumerFactory,
             ITopicPartitionQueueManager queueManager) {
             _config = config;
+            _consumerFactory = consumerFactory;
             _queueManager = queueManager;
         }
 
         public virtual async Task RunConsumersAsync(TopicNaming topicNaming, CancellationToken token) {
-            ConsumerBuilder<byte[], byte[]> builder = new(_config.TopicKafka);
+            var originConsumer = _consumerFactory.BuildOriginConsumer();
+            var retryConsumer = _consumerFactory.BuildRetryConsumer();
 
-            var topicConsumer = builder.Build();
-            IConsumer<byte[], byte[]>? retryConsumer = null;
+            originConsumer.Subscribe(topicNaming.Origin);
+            retryConsumer.Subscribe(topicNaming.Retries);
 
-            // setup producer
-            if (_config.RetryKafka is { } retryConfig) {
-                retryConsumer = new ConsumerBuilder<byte[], byte[]>(retryConfig).Build();
-            }
-
-            if (retryConsumer is null) {
-                // one consumer for all topics
-                var mainAndRetries = new List<string> {topicNaming.Origin};
-                mainAndRetries.AddRange(topicNaming.Retries);
-                topicConsumer.Subscribe(mainAndRetries);
-            }
-            else {
-                topicConsumer.Subscribe(topicNaming.Origin);
-                retryConsumer.Subscribe(topicNaming.Retries);
-            }
-
-            // get the group id from the setting for the retry
+            // get the group id from the setting for the retry -- need a better way of doing this
             string retryGroupId = (_config.RetryKafka ?? _config.TopicKafka)["group.id"];
 
-            List<Task> tasks = new()
-                {ConsumeAsync(topicConsumer, topicNaming, token, retryGroupId)};
-            if (retryConsumer is { }) {
-                tasks.Add(ConsumeAsync(retryConsumer, topicNaming, token, retryGroupId));
-            }
-
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(ConsumeAsync(originConsumer, topicNaming, token, retryGroupId),
+                ConsumeAsync(retryConsumer, topicNaming, token, retryGroupId));
         }
 
         private async Task ConsumeAsync(IConsumer<byte[], byte[]> consumer, TopicNaming topicNaming,
@@ -62,12 +43,13 @@ namespace KafkaConsumerRetry.Services {
 
                 // TODO: this is not great. shouldn't return the current index and next topic
                 var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(consumeResult.Topic, topicNaming);
-                _queueManager.AddConsumeResult(consumeResult, consumer, retryGroupId, currentIndexAndNextTopic.NextTopic, currentIndexAndNextTopic.CurrentIndex);
+                _queueManager.AddConsumeResult(consumeResult, consumer, retryGroupId,
+                    currentIndexAndNextTopic.NextTopic, currentIndexAndNextTopic.CurrentIndex);
             }
         }
 
         /// <summary>
-        /// Gets the current index of the topic, and also the next topic to push to
+        ///     Gets the current index of the topic, and also the next topic to push to
         /// </summary>
         /// <param name="topic"></param>
         /// <param name="topicNaming"></param>

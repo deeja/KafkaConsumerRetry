@@ -8,9 +8,9 @@ namespace KafkaConsumerRetry.Services {
         private readonly IProducer<byte[], byte[]> _producer;
         private readonly IDelayCalculator _delayCalculator;
 
-        public TopicPartitionQueueManager(IConsumerResultHandler handler, IProducer<byte[], byte[]> producer, IDelayCalculator delayCalculator) {
+        public TopicPartitionQueueManager(IConsumerResultHandler handler, IProducerFactory producer, IDelayCalculator delayCalculator) {
             _handler = handler;
-            _producer = producer;
+            _producer = producer.BuildRetryProducer();
             _delayCalculator = delayCalculator;
         }
 

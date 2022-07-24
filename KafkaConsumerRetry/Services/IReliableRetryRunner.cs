@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using KafkaConsumerRetry.Configuration;
 
 namespace KafkaConsumerRetry.Services {
-    public interface IConsumerFactory {
+    public interface IReliableRetryRunner {
         Task RunConsumersAsync(TopicNaming topicNaming, CancellationToken token);
     }
 }
