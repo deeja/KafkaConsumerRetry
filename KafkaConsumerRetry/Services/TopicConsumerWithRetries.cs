@@ -20,8 +20,8 @@ namespace KafkaConsumerRetry.Services {
             // ensure topics exist
             // subscribe to all topics
             TopicNaming topicNaming = _nameGenerator.GetTopicNaming(topic);
-            await _topicManager.EnsureTopicSettings(topicNaming);
-            await _consumerFactory.StartConsumers(topic, token);
+            await _topicManager.SetupTopics(topicNaming);
+            await _consumerFactory.StartConsumers(token, topicNaming);
         }
     }
 }

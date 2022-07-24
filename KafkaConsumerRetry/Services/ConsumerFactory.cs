@@ -13,16 +13,14 @@ namespace KafkaConsumerRetry.Services {
     public class ConsumerFactory : IConsumerFactory {
         private readonly RetryServiceConfig _config;
         private readonly ITopicPartitionQueueAllocator _topicPartitionQueueAllocator;
-        private readonly ISupportTopicNameGenerator _generator;
 
-        public ConsumerFactory(RetryServiceConfig config, ISupportTopicNameGenerator generator,
+        public ConsumerFactory(RetryServiceConfig config,
             ITopicPartitionQueueAllocator topicPartitionQueueAllocator) {
             _config = config;
-            _generator = generator;
             _topicPartitionQueueAllocator = topicPartitionQueueAllocator;
         }
 
-        public virtual async Task StartConsumers(string topicName, CancellationToken token) {
+        public virtual async Task StartConsumers(CancellationToken token, TopicNaming topicNaming) {
             ConsumerBuilder<byte[], byte[]> builder = new(_config.TopicKafka);
 
             var topicConsumer = builder.Build();
@@ -33,7 +31,6 @@ namespace KafkaConsumerRetry.Services {
                 retryConsumer = new ConsumerBuilder<byte[], byte[]>(retryConfig).Build();
             }
 
-            var topicNaming = _generator.GetTopicNaming(topicName);
             if (retryConsumer is null) {
                 // one consumer for all topics
                 var mainAndRetries = new List<string> {topicNaming.Origin};

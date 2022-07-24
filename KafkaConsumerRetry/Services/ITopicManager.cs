@@ -5,6 +5,6 @@ namespace KafkaConsumerRetry.Services
 {
     public interface ITopicManager
     {
-        Task EnsureTopicSettings(TopicNaming topicsNaming);
+        Task SetupTopics(TopicNaming topicsNaming);
     }
 }
