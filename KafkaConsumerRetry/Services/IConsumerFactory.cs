@@ -4,6 +4,6 @@ using KafkaConsumerRetry.Configuration;
 
 namespace KafkaConsumerRetry.Services {
     public interface IConsumerFactory {
-        Task StartConsumers(CancellationToken token, TopicNaming topicNaming);
+        Task RunConsumersAsync(TopicNaming topicNaming, CancellationToken token);
     }
 }

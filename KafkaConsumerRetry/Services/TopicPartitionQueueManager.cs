@@ -2,13 +2,13 @@
 using Confluent.Kafka;
 
 namespace KafkaConsumerRetry.Services {
-    public class TopicPartitionQueueAllocator : ITopicPartitionQueueAllocator {
-        private readonly IMessageValueHandler _handler;
+    public class TopicPartitionQueueManager : ITopicPartitionQueueManager {
+        private readonly IConsumerResultHandler _handler;
         private readonly Dictionary<TopicPartition, TopicPartitionQueue> _partitionQueues = new();
         private readonly IProducer<byte[], byte[]> _producer;
         private readonly IDelayCalculator _delayCalculator;
 
-        public TopicPartitionQueueAllocator(IMessageValueHandler handler, IProducer<byte[], byte[]> producer, IDelayCalculator delayCalculator) {
+        public TopicPartitionQueueManager(IConsumerResultHandler handler, IProducer<byte[], byte[]> producer, IDelayCalculator delayCalculator) {
             _handler = handler;
             _producer = producer;
             _delayCalculator = delayCalculator;

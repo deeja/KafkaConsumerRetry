@@ -4,12 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace KafkaConsumerRetry {
     public static class TypeRegistrationExtensions {
         public static IServiceCollection RegisterTypes(this IServiceCollection collection) {
-            collection.AddSingleton<IDelayCalculator, SimpleBackingOffDelayCalculator>()
+            collection.AddSingleton<IDelayCalculator, SimpleBackOffDelayCalculator>()
                 .AddSingleton<IConsumerFactory, ConsumerFactory>()
-                .AddSingleton<ITopicManager, TopicManager>()
-                .AddSingleton<ITopicPartitionQueueAllocator, TopicPartitionQueueAllocator>()
+                .AddSingleton<ITopicPartitionQueueManager, TopicPartitionQueueManager>()
                 .AddSingleton<ISupportTopicNameGenerator, SupportTopicNameGenerator>()
-                .AddSingleton<IMessageValueHandler, MessageValueHandler>();
+                .AddSingleton<IConsumerResultHandler, WriteToLoggerConsumerResultHandler>();
 
             return collection;
         }

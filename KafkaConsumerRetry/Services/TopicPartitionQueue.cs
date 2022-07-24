@@ -19,7 +19,7 @@ namespace KafkaConsumerRetry.Services
         /// </summary>
         private readonly ConcurrentQueue<ConsumeResult<byte[], byte[]>> _consumeResultQueue = new();
 
-        private readonly IMessageValueHandler _messageValueHandler;
+        private readonly IConsumerResultHandler _consumerResultHandler;
         private readonly IDelayCalculator _delayCalculator;
 
         private readonly string _nextTopic;
@@ -35,12 +35,12 @@ namespace KafkaConsumerRetry.Services
         private bool _isPaused;
         private readonly int _retryIndex;
 
-        public TopicPartitionQueue(IMessageValueHandler messageValueHandler,
+        public TopicPartitionQueue(IConsumerResultHandler consumerResultHandler,
             IDelayCalculator delayCalculator,
             IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
             IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex)
         {
-            _messageValueHandler = messageValueHandler;
+            _consumerResultHandler = consumerResultHandler;
             _delayCalculator = delayCalculator;
             _workerTokenSource = new CancellationTokenSource();
             _consumer = consumer;
@@ -73,7 +73,7 @@ namespace KafkaConsumerRetry.Services
                     try {
                         var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
                         await Task.Delay(delayTime, cancellationToken);
-                        await _messageValueHandler.HandleAsync(consumeResult.Message, cancellationToken);
+                        await _consumerResultHandler.HandleAsync(consumeResult, cancellationToken);
                     }
                     catch (Exception handledException)
                     {

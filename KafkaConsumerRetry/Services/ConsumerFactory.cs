@@ -12,15 +12,15 @@ namespace KafkaConsumerRetry.Services {
     /// </summary>
     public class ConsumerFactory : IConsumerFactory {
         private readonly RetryServiceConfig _config;
-        private readonly ITopicPartitionQueueAllocator _topicPartitionQueueAllocator;
+        private readonly ITopicPartitionQueueManager _queueManager;
 
         public ConsumerFactory(RetryServiceConfig config,
-            ITopicPartitionQueueAllocator topicPartitionQueueAllocator) {
+            ITopicPartitionQueueManager queueManager) {
             _config = config;
-            _topicPartitionQueueAllocator = topicPartitionQueueAllocator;
+            _queueManager = queueManager;
         }
 
-        public virtual async Task StartConsumers(CancellationToken token, TopicNaming topicNaming) {
+        public virtual async Task RunConsumersAsync(TopicNaming topicNaming, CancellationToken token) {
             ConsumerBuilder<byte[], byte[]> builder = new(_config.TopicKafka);
 
             var topicConsumer = builder.Build();
@@ -62,7 +62,7 @@ namespace KafkaConsumerRetry.Services {
 
                 // TODO: this is not great. shouldn't return the current index and next topic
                 var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(consumeResult.Topic, topicNaming);
-                _topicPartitionQueueAllocator.AddConsumeResult(consumeResult, consumer, retryGroupId, currentIndexAndNextTopic.NextTopic, currentIndexAndNextTopic.CurrentIndex);
+                _queueManager.AddConsumeResult(consumeResult, consumer, retryGroupId, currentIndexAndNextTopic.NextTopic, currentIndexAndNextTopic.CurrentIndex);
             }
         }
 

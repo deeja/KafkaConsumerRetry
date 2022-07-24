@@ -4,9 +4,9 @@ using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Services;
 
 namespace KafkaConsumerRetry {
-    public class SimpleBackingOffDelayCalculator: IDelayCalculator {
+    public class SimpleBackOffDelayCalculator: IDelayCalculator {
         private readonly RetryServiceConfig _config;
-        public SimpleBackingOffDelayCalculator(RetryServiceConfig config) {
+        public SimpleBackOffDelayCalculator(RetryServiceConfig config) {
             _config = config;
         }
 
