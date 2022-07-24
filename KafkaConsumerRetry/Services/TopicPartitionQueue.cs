@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
+using Microsoft.Extensions.Logging;
 
 namespace KafkaConsumerRetry.Services
 {
@@ -34,8 +35,10 @@ namespace KafkaConsumerRetry.Services
 
         private bool _isPaused;
         private readonly int _retryIndex;
+        private readonly ILogger<TopicPartitionQueue> _logger;
 
         public TopicPartitionQueue(IConsumerResultHandler consumerResultHandler,
+            ILoggerFactory factory,
             IDelayCalculator delayCalculator,
             IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
             IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex)
@@ -50,6 +53,7 @@ namespace KafkaConsumerRetry.Services
             _nextTopic = nextTopic;
             _retryIndex = retryIndex;
             // TODO: Tie cancellation to the host applications lifetime
+            _logger = factory.CreateLogger<TopicPartitionQueue>();
 
             _ = Task.Factory.StartNew(async () => await DoWorkAsync(), _workerTokenSource.Token,
                 TaskCreationOptions.LongRunning, TaskScheduler.Default);
@@ -77,6 +81,7 @@ namespace KafkaConsumerRetry.Services
                     }
                     catch (Exception handledException)
                     {
+                        _logger.LogError(handledException, "Failed to process message. Placing in retry. Message Key: {MessageKey}", consumeResult.Message.Key);
                         AppendException(handledException, _retryGroupId, consumeResult.Message);
                         await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message,
                             cancellationToken);

@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KafkaConsumerRetry", "Kafka
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConsole", "TestConsole\TestConsole.csproj", "{F91D9802-55B6-4CF8-A6BB-58A9360C5EF4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KafkaConsumerRetry.Tests", "KafkaConsumerRetry.Tests\KafkaConsumerRetry.Tests.csproj", "{B4493509-BCFA-4B98-A61C-C3EDE70F908B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{F91D9802-55B6-4CF8-A6BB-58A9360C5EF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F91D9802-55B6-4CF8-A6BB-58A9360C5EF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F91D9802-55B6-4CF8-A6BB-58A9360C5EF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4493509-BCFA-4B98-A61C-C3EDE70F908B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4493509-BCFA-4B98-A61C-C3EDE70F908B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4493509-BCFA-4B98-A61C-C3EDE70F908B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4493509-BCFA-4B98-A61C-C3EDE70F908B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

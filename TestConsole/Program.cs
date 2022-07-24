@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using KafkaConsumerRetry;
 using KafkaConsumerRetry.Configuration;
+using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TestConsole;
@@ -12,6 +13,7 @@ using TestConsole;
 IServiceCollection services = new ServiceCollection();
 services.AddSingleton(new RetryServiceConfig {
     RetryAttempts = 3,
+    RetryBaseTime = TimeSpan.FromSeconds(2),
     TopicKafka = new Dictionary<string, string> {
         ["group.id"] = "my-group-name",
         ["bootstrap.servers"] = "localhost:9092",
@@ -23,9 +25,9 @@ services.AddSingleton(new RetryServiceConfig {
 });
 services.AddKafkaConsumerRetry();
 services.AddLogging(builder => builder.AddConsole());
-services.AddSingleton<Runner>();
+services.AddSingleton<Runner>()
+    .AddSingleton<IConsumerResultHandler, WriteToLoggerConsumerResultHandler>();
 var sp = services.BuildServiceProvider();
 var requiredService = sp.GetRequiredService<Runner>();
 var cancellationToken = CancellationToken.None;
-
 await requiredService.ExecuteAsync(cancellationToken);
