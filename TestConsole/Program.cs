@@ -13,7 +13,7 @@ using TestConsole;
 IServiceCollection services = new ServiceCollection();
 services.AddSingleton(new RetryServiceConfig {
     RetryAttempts = 3,
-    RetryBaseTime = TimeSpan.FromSeconds(2),
+    RetryBaseTime = TimeSpan.FromSeconds(30),
     TopicKafka = new Dictionary<string, string> {
         ["group.id"] = "my-group-name",
         ["bootstrap.servers"] = "localhost:9092",

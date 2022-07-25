@@ -35,7 +35,7 @@ namespace TestConsole {
                 new ProducerBuilder<byte[], byte[]>(new ProducerConfig {BootstrapServers = "localhost:9092"})
                     .Build();
 
-            for (var i = 0; i < 100; i++) {
+            for (var i = 0; i < 1; i++) {
                 await producer.ProduceAsync("my.topic", new Message<byte[], byte[]> {
                     Key = Encoding.UTF8.GetBytes(DateTime.Now.ToString(CultureInfo.InvariantCulture)),
                     Value = Encoding.UTF8.GetBytes(DateTime.Now.ToString(CultureInfo.InvariantCulture))

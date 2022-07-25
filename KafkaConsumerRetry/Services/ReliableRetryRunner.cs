@@ -65,12 +65,13 @@ namespace KafkaConsumerRetry.Services {
             // if any of the retries except the last, then use the next
             for (var i = 0; i < topicNaming.Retries.Length - 1; i++) {
                 if (topicNaming.Retries[i] == topic) {
-                    return (i, topicNaming.Retries[i + 1]);
+                    var retryIndex = i + 1;
+                    return (retryIndex, topicNaming.Retries[retryIndex]);
                 }
             }
 
             // otherwise dlq -- must have at least one 
-            return (Math.Max(1, topicNaming.Retries.Length), topicNaming.DeadLetter);
+            return (Math.Max(1, topicNaming.Retries.Length + 1), topicNaming.DeadLetter);
         }
     }
 }

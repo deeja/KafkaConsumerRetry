@@ -79,6 +79,7 @@ namespace KafkaConsumerRetry.Services {
                             "Failed to process message. Placing in retry. Message Key: {MessageKey}",
                             consumeResult.Message.Key);
                         AppendException(handledException, _retryGroupId, consumeResult.Message);
+                        SetTimestamp(consumeResult);
                         await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message,
                             cancellationToken);
                     }
@@ -95,6 +96,10 @@ namespace KafkaConsumerRetry.Services {
                     // TODO: semaphore or something here rather than a delay
                 }
             }
+        }
+
+        private void SetTimestamp(ConsumeResult<byte[],byte[]> consumeResult) {
+            consumeResult.Message.Timestamp = new Timestamp(DateTimeOffset.UtcNow);
         }
 
         private void AppendException(Exception exception, string retryConsumerGroupId,
