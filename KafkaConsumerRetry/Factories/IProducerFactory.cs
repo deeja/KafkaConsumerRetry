@@ -1,6 +1,6 @@
 ﻿using Confluent.Kafka;
 
-namespace KafkaConsumerRetry {
+namespace KafkaConsumerRetry.Factories {
     public interface IProducerFactory {
         IProducer<byte[], byte[]> BuildRetryProducer();
     }

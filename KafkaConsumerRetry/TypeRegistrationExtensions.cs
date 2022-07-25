@@ -1,5 +1,7 @@
-﻿using KafkaConsumerRetry.Configuration;
+﻿using KafkaConsumerRetry.DelayCalculators;
+using KafkaConsumerRetry.Factories;
 using KafkaConsumerRetry.Services;
+using KafkaConsumerRetry.SupportTopicNaming;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace KafkaConsumerRetry {
@@ -10,7 +12,7 @@ namespace KafkaConsumerRetry {
                 .AddSingleton<IConsumerFactory, ConsumerFactory>()
                 .AddSingleton<IReliableRetryRunner, ReliableRetryRunner>()
                 .AddSingleton<ITopicPartitionQueueManager, TopicPartitionQueueManager>()
-                .AddSingleton<ISupportTopicNameGenerator, SupportTopicNameGenerator>();
+                .AddSingleton<ITopicNaming, TopicNaming>();
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 using KafkaConsumerRetry.Configuration;
+using KafkaConsumerRetry.Factories;
 
 namespace KafkaConsumerRetry.Services {
     /// <summary>

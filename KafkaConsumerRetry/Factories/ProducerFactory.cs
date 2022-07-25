@@ -1,7 +1,7 @@
 ﻿using Confluent.Kafka;
 using KafkaConsumerRetry.Configuration;
 
-namespace KafkaConsumerRetry {
+namespace KafkaConsumerRetry.Factories {
     public class ProducerFactory : IProducerFactory {
         private readonly RetryServiceConfig _config;
 
@@ -10,7 +10,8 @@ namespace KafkaConsumerRetry {
         }
 
         public IProducer<byte[], byte[]> BuildRetryProducer() {
-            return new ProducerBuilder<byte[], byte[]>(_config.RetryKafka ?? _config.TopicKafka).Build();
+            var producerConfig = new ProducerConfig(_config.RetryKafka ?? _config.TopicKafka);
+            return new ProducerBuilder<byte[], byte[]>(producerConfig).Build();
         }
     }
 }

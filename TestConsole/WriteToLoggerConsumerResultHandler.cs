@@ -6,8 +6,9 @@ using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.Logging;
 
 namespace TestConsole {
-    class WriteToLoggerConsumerResultHandler : IConsumerResultHandler {
+    internal class WriteToLoggerConsumerResultHandler : IConsumerResultHandler {
         private readonly ILogger<WriteToLoggerConsumerResultHandler> _logger;
+
         public WriteToLoggerConsumerResultHandler(ILogger<WriteToLoggerConsumerResultHandler> logger) {
             _logger = logger;
         }
