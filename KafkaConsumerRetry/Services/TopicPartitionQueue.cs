@@ -36,6 +36,8 @@ namespace KafkaConsumerRetry.Services {
         private readonly string RetryConsumerGroupIdKey = "RETRY_GROUP_ID";
 
         private bool _isPaused;
+        private readonly Task _coreTask;
+        private bool _revoked;
 
         public TopicPartitionQueue(IConsumerResultHandler consumerResultHandler,
             ILoggerFactory factory,
@@ -55,9 +57,7 @@ namespace KafkaConsumerRetry.Services {
             _retryIndex = retryIndex;
             // TODO: Tie cancellation to the host applications lifetime
             _logger = factory.CreateLogger<TopicPartitionQueue>();
-
-            _ = Task.Factory.StartNew(async () => await DoWorkAsync(), _workerTokenSource.Token,
-                TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            _coreTask = DoWorkAsync();
         }
 
         public void Dispose() {
@@ -69,8 +69,9 @@ namespace KafkaConsumerRetry.Services {
         ///     Process items in the queue for this specific topic partition
         /// </summary>
         private async Task DoWorkAsync() {
+            await Task.Yield();
             var cancellationToken = _workerTokenSource.Token;
-            while (!cancellationToken.IsCancellationRequested) {
+            while (!(cancellationToken.IsCancellationRequested || _revoked)) {
                 if (_consumeResultQueue.TryDequeue(out var consumeResult)) {
                     try {
                         var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
@@ -131,17 +132,24 @@ namespace KafkaConsumerRetry.Services {
             _consumeResultQueue.Enqueue(consumeResult);
 
             // if there are more in the queue than there should be, then pause the partition to halt the pulling of those messages
-            if (_consumeResultQueue.Count > PAUSE_THRESHOLD) {
-                _consumer.Pause(new[] {_topicPartition});
-                _isPaused = true;
+            if (_consumeResultQueue.Count <= PAUSE_THRESHOLD) {
+                return;
             }
+
+            _consumer.Pause(new[] {_topicPartition});
+            _logger.LogTrace("PAUSING self: {TopicPartition}", _topicPartition);
+            _isPaused = true;
+        }
+        
+        public void Cancel() {
+            _logger.LogTrace("CANCELLING self: {TopicPartition}", _topicPartition);
+            _workerTokenSource.Cancel();
         }
 
-        /// <summary>
-        ///     Call when the topic partition has been revoked
-        /// </summary>
-        public void Cancel() {
-            _workerTokenSource.Cancel();
+        public async Task RevokeAsync() {
+            _logger.LogTrace("REVOKING self: {TopicPartition}", _topicPartition);
+            _revoked = true;
+            await _coreTask;
         }
     }
 }

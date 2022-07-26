@@ -44,8 +44,7 @@ namespace KafkaConsumerRetry.Services {
 
                 // TODO: this is not great. shouldn't return the current index and next topic
                 var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(consumeResult.Topic, topicNaming);
-                _queueManager.AddConsumeResult(consumeResult, consumer, retryGroupId,
-                    currentIndexAndNextTopic.NextTopic, currentIndexAndNextTopic.CurrentIndex);
+                _queueManager.AddConsumeResult(consumeResult);
             }
         }
 
