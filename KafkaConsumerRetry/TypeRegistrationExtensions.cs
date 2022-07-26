@@ -10,6 +10,7 @@ namespace KafkaConsumerRetry {
             return collection.AddSingleton<IDelayCalculator, BackOffDelayCalculator>()
                 .AddSingleton<IProducerFactory, ProducerFactory>()
                 .AddSingleton<IConsumerFactory, ConsumerFactory>()
+                .AddSingleton<ILimiter, Limiter>()
                 .AddSingleton<IReliableRetryRunner, ReliableRetryRunner>()
                 .AddSingleton<ITopicPartitionQueueManager, TopicPartitionQueueManager>()
                 .AddSingleton<ITopicNaming, TopicNaming>();

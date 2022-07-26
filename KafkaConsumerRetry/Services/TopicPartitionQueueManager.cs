@@ -9,15 +9,17 @@ namespace KafkaConsumerRetry.Services {
         private readonly IDelayCalculator _delayCalculator;
         private readonly IConsumerResultHandler _handler;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly ILimiter _limiter;
         private readonly Dictionary<TopicPartition, TopicPartitionQueue> _partitionQueues = new();
         private readonly IProducer<byte[], byte[]> _producer;
 
         public TopicPartitionQueueManager(IConsumerResultHandler handler, IProducerFactory producer,
-            IDelayCalculator delayCalculator, ILoggerFactory loggerFactory) {
+            IDelayCalculator delayCalculator, ILoggerFactory loggerFactory, ILimiter limiter) {
             _handler = handler;
             _producer = producer.BuildRetryProducer();
             _delayCalculator = delayCalculator;
             _loggerFactory = loggerFactory;
+            _limiter = limiter;
         }
 
         public void AddConsumeResult(ConsumeResult<byte[], byte[]> consumeResult, IConsumer<byte[], byte[]> consumer,
@@ -25,7 +27,7 @@ namespace KafkaConsumerRetry.Services {
             var topicPartition = consumeResult.TopicPartition;
             if (!_partitionQueues.ContainsKey(topicPartition)) {
                 _partitionQueues.Add(topicPartition,
-                    new TopicPartitionQueue(_handler, _loggerFactory, _delayCalculator, consumer, topicPartition,
+                    new TopicPartitionQueue(_handler, _loggerFactory, _delayCalculator, _limiter, consumer, topicPartition,
                         _producer, retryGroupId, nextTopic, retryIndex));
             }
 

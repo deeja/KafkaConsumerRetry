@@ -21,6 +21,7 @@ namespace KafkaConsumerRetry.Services {
 
         private readonly IConsumerResultHandler _consumerResultHandler;
         private readonly IDelayCalculator _delayCalculator;
+        private readonly ILimiter _limiter;
         private readonly ILogger<TopicPartitionQueue> _logger;
 
         private readonly string _nextTopic;
@@ -39,10 +40,12 @@ namespace KafkaConsumerRetry.Services {
         public TopicPartitionQueue(IConsumerResultHandler consumerResultHandler,
             ILoggerFactory factory,
             IDelayCalculator delayCalculator,
+            ILimiter limiter,
             IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
             IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex) {
             _consumerResultHandler = consumerResultHandler;
             _delayCalculator = delayCalculator;
+            _limiter = limiter;
             _workerTokenSource = new CancellationTokenSource();
             _consumer = consumer;
             _topicPartition = topicPartition;
@@ -72,7 +75,12 @@ namespace KafkaConsumerRetry.Services {
                     try {
                         var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
                         await Task.Delay(delayTime, cancellationToken);
+                        await _limiter.WaitAsync(cancellationToken);
+                        if (cancellationToken.IsCancellationRequested) {
+                            break;
+                        }
                         await _consumerResultHandler.HandleAsync(consumeResult, cancellationToken);
+                        _consumer.StoreOffset(consumeResult); // don't put outside the loop due to the break
                     }
                     catch (Exception handledException) {
                         _logger.LogError(handledException,
@@ -82,9 +90,12 @@ namespace KafkaConsumerRetry.Services {
                         SetTimestamp(consumeResult);
                         await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message,
                             cancellationToken);
+                        _consumer.StoreOffset(consumeResult); // need to set after handing off to retry
+                    }
+                    finally {
+                        _limiter.Release();
                     }
 
-                    _consumer.StoreOffset(consumeResult);
                 }
                 else {
                     if (_isPaused) {
@@ -98,7 +109,7 @@ namespace KafkaConsumerRetry.Services {
             }
         }
 
-        private void SetTimestamp(ConsumeResult<byte[],byte[]> consumeResult) {
+        private void SetTimestamp(ConsumeResult<byte[], byte[]> consumeResult) {
             consumeResult.Message.Timestamp = new Timestamp(DateTimeOffset.UtcNow);
         }
 

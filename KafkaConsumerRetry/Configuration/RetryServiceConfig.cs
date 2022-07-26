@@ -32,5 +32,7 @@ namespace KafkaConsumerRetry.Configuration {
         ///     <seealso cref="Confluent.Kafka.ConsumerConfig" />
         /// </summary>
         public IDictionary<string, string>? RetryKafka { get; set; }
+
+        public int MaxConcurrent { get; set; } = 10;
     }
 }
