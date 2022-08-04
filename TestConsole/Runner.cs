@@ -5,14 +5,14 @@ using Confluent.Kafka.Admin;
 using KafkaConsumerRetry.Services;
 using KafkaConsumerRetry.SupportTopicNaming;
 
-namespace TestConsole; 
+namespace TestConsole;
 
 public class Runner {
+    private readonly IConsumerRunner _consumerRunner;
     private readonly ITopicNaming _naming;
-    private readonly IReliableRetryRunner _reliableRetryRunner;
 
-    public Runner(IReliableRetryRunner reliableRetryRunner, ITopicNaming naming) {
-        _reliableRetryRunner = reliableRetryRunner;
+    public Runner(IConsumerRunner consumerRunner, ITopicNaming naming) {
+        _consumerRunner = consumerRunner;
         _naming = naming;
     }
 
@@ -22,7 +22,7 @@ public class Runner {
         await CreateTopicsAsync();
         _ = GenerateMessagesAsync();
 
-        await _reliableRetryRunner.RunConsumersAsync(topicNaming, cancellationToken);
+        await _consumerRunner.RunConsumersAsync(topicNaming, cancellationToken);
     }
 
     private async Task GenerateMessagesAsync() {

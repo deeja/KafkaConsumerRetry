@@ -29,7 +29,7 @@ services.AddLogging(builder => builder.AddSimpleConsole(options => {
     options.UseUtcTimestamp = true;
 }));
 services.AddSingleton<Runner>()
-    .AddSingleton<IConsumerResultHandler, WriteToLoggerConsumerResultHandler>();
+    .AddSingleton<IConsumerResultHandler, TestingResultHandler>();
 var sp = services.BuildServiceProvider();
 var requiredService = sp.GetRequiredService<Runner>();
 var cancellationToken = CancellationToken.None;

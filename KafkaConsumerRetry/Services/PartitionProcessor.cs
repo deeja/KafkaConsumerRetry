@@ -4,12 +4,12 @@ using Confluent.Kafka;
 using KafkaConsumerRetry.DelayCalculators;
 using Microsoft.Extensions.Logging;
 
-namespace KafkaConsumerRetry.Services; 
+namespace KafkaConsumerRetry.Services;
 
 /// <summary>
 ///     Rolls through queued messages, working on them and pushing them to the next retry if there is a failure
 /// </summary>
-internal class TopicPartitionQueue : IDisposable {
+internal class PartitionProcessor : IDisposable {
     private const string LastExceptionKey = "LAST_EXCEPTION";
 
     private const int PauseThreshold = 5;
@@ -24,10 +24,10 @@ internal class TopicPartitionQueue : IDisposable {
     private readonly IConsumerResultHandler _consumerResultHandler;
     private readonly Task _coreTask;
     private readonly IDelayCalculator _delayCalculator;
-    private readonly ILimiter _limiter;
-    private readonly ILogger<TopicPartitionQueue> _logger;
+    private readonly ILogger<PartitionProcessor> _logger;
 
     private readonly string _nextTopic;
+    private readonly IRateLimiter _rateLimiter;
     private readonly string _retryGroupId;
     private readonly int _retryIndex;
     private readonly IProducer<byte[], byte[]> _retryProducer;
@@ -37,15 +37,15 @@ internal class TopicPartitionQueue : IDisposable {
     private bool _isPaused;
     private bool _revoked;
 
-    public TopicPartitionQueue(IConsumerResultHandler consumerResultHandler,
+    public PartitionProcessor(IConsumerResultHandler consumerResultHandler,
         ILoggerFactory factory,
         IDelayCalculator delayCalculator,
-        ILimiter limiter,
+        IRateLimiter rateLimiter,
         IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
         IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex) {
         _consumerResultHandler = consumerResultHandler;
         _delayCalculator = delayCalculator;
-        _limiter = limiter;
+        _rateLimiter = rateLimiter;
         _workerTokenSource = new CancellationTokenSource();
         _consumer = consumer;
         _topicPartition = topicPartition;
@@ -54,7 +54,7 @@ internal class TopicPartitionQueue : IDisposable {
         _nextTopic = nextTopic;
         _retryIndex = retryIndex;
         // TODO: Tie cancellation to the host applications lifetime
-        _logger = factory.CreateLogger<TopicPartitionQueue>();
+        _logger = factory.CreateLogger<PartitionProcessor>();
         _coreTask = DoWorkAsync();
     }
 
@@ -75,7 +75,7 @@ internal class TopicPartitionQueue : IDisposable {
                 try {
                     var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
                     await Task.Delay(delayTime, cancellationToken);
-                    await _limiter.WaitAsync(cancellationToken);
+                    await _rateLimiter.WaitAsync(cancellationToken);
                     if (cancellationToken.IsCancellationRequested) {
                         break;
                     }
@@ -94,7 +94,7 @@ internal class TopicPartitionQueue : IDisposable {
                     _consumer.StoreOffset(consumeResult); // need to set after handing off to retry
                 }
                 finally {
-                    _limiter.Release();
+                    _rateLimiter.Release();
                 }
             }
             else {

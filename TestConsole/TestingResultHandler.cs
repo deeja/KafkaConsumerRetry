@@ -3,20 +3,20 @@ using Confluent.Kafka;
 using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.Logging;
 
-namespace TestConsole; 
+namespace TestConsole;
 
-internal class WriteToLoggerConsumerResultHandler : IConsumerResultHandler {
-    private readonly ILogger<WriteToLoggerConsumerResultHandler> _logger;
+internal class TestingResultHandler : IConsumerResultHandler {
+    private readonly ILogger<TestingResultHandler> _logger;
 
-    public WriteToLoggerConsumerResultHandler(ILogger<WriteToLoggerConsumerResultHandler> logger) {
+    public TestingResultHandler(ILogger<TestingResultHandler> logger) {
         _logger = logger;
     }
 
     public async Task HandleAsync(ConsumeResult<byte[], byte[]> message, CancellationToken cancellationToken) {
-
         var messageString = Encoding.UTF8.GetString(message.Message.Value);
 
-        _logger.LogInformation("Message: {MessageString} - Topic: {TopicPartitionOffset}",messageString,  message.TopicPartitionOffset);
+        _logger.LogInformation("Message: {MessageString} - Topic: {TopicPartitionOffset}", messageString,
+            message.TopicPartitionOffset);
 
         switch (messageString) {
             case "DIE":
