@@ -1,8 +1,5 @@
 // See https://aka.ms/new-console-template for more information
 
-using System;
-using System.Collections.Generic;
-using System.Threading;
 using KafkaConsumerRetry;
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Services;
@@ -14,7 +11,8 @@ using TestConsole;
 IServiceCollection services = new ServiceCollection();
 services.AddSingleton(new RetryServiceConfig {
     RetryAttempts = 3,
-    RetryBaseTime = TimeSpan.FromSeconds(2),
+    MaxConcurrent = 100,
+    RetryBaseTime = TimeSpan.FromSeconds(5),
     TopicKafka = new Dictionary<string, string> {
         ["group.id"] = "my-group-name",
         ["bootstrap.servers"] = "localhost:9092",
