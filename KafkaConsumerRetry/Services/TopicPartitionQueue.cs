@@ -73,6 +73,7 @@ namespace KafkaConsumerRetry.Services {
             var cancellationToken = _workerTokenSource.Token;
             while (!(cancellationToken.IsCancellationRequested || _revoked)) {
                 if (_consumeResultQueue.TryDequeue(out var consumeResult)) {
+                    _logger.LogTrace("[{TopicPartition}] - Dequeued {Key}", _topicPartition, consumeResult.Message.Key);
                     try {
                         var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
                         await Task.Delay(delayTime, cancellationToken);
