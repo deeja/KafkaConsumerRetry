@@ -15,7 +15,11 @@ namespace TestConsole {
 
         public Task HandleAsync(ConsumeResult<byte[], byte[]> message, CancellationToken cancellationToken) {
             _logger.LogInformation("Message received - Topic: {TopicPartitionOffset}", message.TopicPartitionOffset);
-            throw new NotImplementedException("Kaboom!");
+         //   throw new NotImplementedException("Kaboom!");
+         
+         
+         
+         return Task.CompletedTask;
         }
     }
 }

@@ -8,12 +8,13 @@ using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using TestConsole;
 
 IServiceCollection services = new ServiceCollection();
 services.AddSingleton(new RetryServiceConfig {
     RetryAttempts = 3,
-    RetryBaseTime = TimeSpan.FromSeconds(30),
+    RetryBaseTime = TimeSpan.FromSeconds(2),
     TopicKafka = new Dictionary<string, string> {
         ["group.id"] = "my-group-name",
         ["bootstrap.servers"] = "localhost:9092",
@@ -24,7 +25,11 @@ services.AddSingleton(new RetryServiceConfig {
     }
 });
 services.AddKafkaConsumerRetry();
-services.AddLogging(builder => builder.AddConsole());
+services.AddLogging(builder => builder.AddSimpleConsole(options => {
+    options.ColorBehavior = LoggerColorBehavior.Default;
+    options.IncludeScopes = true;
+    options.UseUtcTimestamp = true;
+}));
 services.AddSingleton<Runner>()
     .AddSingleton<IConsumerResultHandler, WriteToLoggerConsumerResultHandler>();
 var sp = services.BuildServiceProvider();

@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
-using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Services;
 using KafkaConsumerRetry.SupportTopicNaming;
 using TopicNaming = KafkaConsumerRetry.Configuration.TopicNaming;
