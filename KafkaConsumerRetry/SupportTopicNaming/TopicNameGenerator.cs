@@ -2,11 +2,11 @@
 
 namespace KafkaConsumerRetry.SupportTopicNaming;
 
-public class TopicNaming
-    : ITopicNaming {
+public class TopicNameGenerator
+    : ITopicNameGenerator {
     private readonly RetryServiceConfig _config;
 
-    public TopicNaming(RetryServiceConfig config) {
+    public TopicNameGenerator(RetryServiceConfig config) {
         _config = config;
     }
 

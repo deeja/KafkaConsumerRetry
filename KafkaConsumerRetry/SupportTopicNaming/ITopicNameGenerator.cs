@@ -1,5 +1,5 @@
 ﻿namespace KafkaConsumerRetry.SupportTopicNaming;
 
-public interface ITopicNaming {
+public interface ITopicNameGenerator {
     Configuration.TopicNaming GetTopicNaming(string topic);
 }

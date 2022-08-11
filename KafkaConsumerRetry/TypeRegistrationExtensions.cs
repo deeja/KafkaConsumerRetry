@@ -14,6 +14,6 @@ public static class TypeRegistrationExtensions {
             .AddSingleton<IRateLimiter, RateLimiter>()
             .AddSingleton<IConsumerRunner, ConsumerRunner>()
             .AddSingleton<IPartitionManager, PartitionManager>()
-            .AddSingleton<ITopicNaming, TopicNaming>();
+            .AddSingleton<ITopicNameGenerator, TopicNameGenerator>();
     }
 }

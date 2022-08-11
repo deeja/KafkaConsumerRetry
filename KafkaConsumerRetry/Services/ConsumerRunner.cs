@@ -22,7 +22,6 @@ public class ConsumerRunner : IConsumerRunner {
         var retryConsumer = _consumerFactory.BuildRetryConsumer(topicNaming);
 
         originConsumer.Subscribe(topicNaming.Origin);
-
         retryConsumer.Subscribe(topicNaming.Retries);
 
         await Task.WhenAll(ConsumeAsync(originConsumer, token),
