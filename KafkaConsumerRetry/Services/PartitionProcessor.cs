@@ -2,6 +2,8 @@
 using System.Text;
 using Confluent.Kafka;
 using KafkaConsumerRetry.DelayCalculators;
+using KafkaConsumerRetry.Factories;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace KafkaConsumerRetry.Services;
@@ -12,17 +14,17 @@ namespace KafkaConsumerRetry.Services;
 internal class PartitionProcessor : IDisposable {
     private const string LastExceptionKey = "LAST_EXCEPTION";
 
-    private const int PauseThreshold = 5;
+    private const int PauseThreshold = 20; 
     private const string RetryConsumerGroupIdKey = "RETRY_GROUP_ID";
     private readonly IConsumer<byte[], byte[]> _consumer;
 
     /// <summary>
     ///     Tasks that are to be run by this context
     /// </summary>
-    private readonly ConcurrentQueue<ConsumeResult<byte[], byte[]>> _consumeResultQueue = new();
+    private readonly ConcurrentQueue<(Type Handler,ConsumeResult<byte[], byte[]> ConsumeResult)> _consumeResultQueue = new();
 
-    private readonly IConsumerResultHandler _consumerResultHandler;
     private readonly Task _coreTask;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IDelayCalculator _delayCalculator;
     private readonly ILogger<PartitionProcessor> _logger;
 
@@ -36,14 +38,14 @@ internal class PartitionProcessor : IDisposable {
 
     private bool _isPaused;
     private bool _revoked;
-
-    public PartitionProcessor(IConsumerResultHandler consumerResultHandler,
-        ILoggerFactory factory,
+    
+    public PartitionProcessor(ILoggerFactory factory,
+        IServiceProvider serviceProvider,
         IDelayCalculator delayCalculator,
         IRateLimiter rateLimiter,
         IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
         IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex) {
-        _consumerResultHandler = consumerResultHandler;
+        _serviceProvider = serviceProvider;
         _delayCalculator = delayCalculator;
         _rateLimiter = rateLimiter;
         _workerTokenSource = new CancellationTokenSource();
@@ -53,6 +55,7 @@ internal class PartitionProcessor : IDisposable {
         _retryGroupId = retryGroupId;
         _nextTopic = nextTopic;
         _retryIndex = retryIndex;
+        
         // TODO: Tie cancellation to the host applications lifetime
         _logger = factory.CreateLogger<PartitionProcessor>();
         _coreTask = DoWorkAsync();
@@ -70,7 +73,8 @@ internal class PartitionProcessor : IDisposable {
         await Task.Yield();
         var cancellationToken = _workerTokenSource.Token;
         while (!(cancellationToken.IsCancellationRequested || _revoked)) {
-            if (_consumeResultQueue.TryDequeue(out var consumeResult)) {
+            if (_consumeResultQueue.TryDequeue(out var tuple)) {
+                var consumeResult = tuple.ConsumeResult;
                 _logger.LogTrace("[{TopicPartition}] - Dequeued {Key}", _topicPartition, consumeResult.Message.Key);
                 try {
                     var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
@@ -80,7 +84,11 @@ internal class PartitionProcessor : IDisposable {
                         break;
                     }
 
-                    await _consumerResultHandler.HandleAsync(consumeResult, cancellationToken);
+                    using (var serviceScope = _serviceProvider.CreateScope()) {
+                        var handler = (IConsumerResultHandler)serviceScope.ServiceProvider.GetRequiredService(tuple.Handler);
+                        await handler.HandleAsync(consumeResult, cancellationToken);
+                    }
+
                     _consumer.StoreOffset(consumeResult); // don't put outside the loop due to the break
                 }
                 catch (Exception handledException) {
@@ -98,13 +106,14 @@ internal class PartitionProcessor : IDisposable {
                 }
             }
             else {
-                if (_isPaused) {
-                    _consumer.Resume(new[] { _topicPartition });
-                    _isPaused = false;
-                }
-
                 await Task.Delay(100, cancellationToken);
                 // TODO: semaphore or something here rather than a delay
+            }
+            
+            
+            if (_isPaused) {
+                _consumer.Resume(new[] { _topicPartition });
+                _isPaused = false;
             }
         }
     }
@@ -127,8 +136,8 @@ internal class PartitionProcessor : IDisposable {
     ///     This code runs per topic partition, so access is assumed to be sequential (unlikely to have multiple threads)
     /// </remarks>
     /// <param name="consumeResult"></param>
-    public void Enqueue(ConsumeResult<byte[], byte[]> consumeResult) {
-        _consumeResultQueue.Enqueue(consumeResult);
+    public void Enqueue<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult) where TResultHandler: IConsumerResultHandler {
+        _consumeResultQueue.Enqueue((typeof(TResultHandler), consumeResult));
 
         // if there are more in the queue than there should be, then pause the partition to halt the pulling of those messages
         if (_consumeResultQueue.Count <= PauseThreshold) {

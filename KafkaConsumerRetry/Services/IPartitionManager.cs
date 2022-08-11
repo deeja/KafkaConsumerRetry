@@ -4,11 +4,14 @@ using KafkaConsumerRetry.Configuration;
 namespace KafkaConsumerRetry.Services;
 
 public interface IPartitionManager {
-    void QueueConsumeResult(ConsumeResult<byte[], byte[]> consumeResult);
-    void HandleLostPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list);
+    void QueueConsumeResult<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult) where TResultHandler: IConsumerResultHandler;
+    void HandleLostPartitions(IConsumer<byte[], byte[]> consumer, ConsumerConfig consumerConfig,
+        List<TopicPartitionOffset> list);
 
-    void HandleAssignedPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartition> list,
-        TopicNaming topicNaming);
+    void HandleAssignedPartitions(IConsumer<byte[], byte[]> consumer, ConsumerConfig consumerConfig,
+        List<TopicPartition> list,
+        TopicNaming topicNaming, ProducerConfig producerConfig);
 
-    void HandleRevokedPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list);
+    void HandleRevokedPartitions(IConsumer<byte[], byte[]> consumer, ConsumerConfig consumerConfig,
+        List<TopicPartitionOffset> list);
 }

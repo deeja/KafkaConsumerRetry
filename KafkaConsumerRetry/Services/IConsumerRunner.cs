@@ -3,5 +3,6 @@
 namespace KafkaConsumerRetry.Services;
 
 public interface IConsumerRunner {
-    Task RunConsumersAsync(TopicNaming topicNaming, CancellationToken token);
+    Task RunConsumersAsync<TResultHandler>(KafkaRetryConfig kafkaRetryConfig, TopicNaming topicNaming,
+        CancellationToken token) where TResultHandler : IConsumerResultHandler;
 }

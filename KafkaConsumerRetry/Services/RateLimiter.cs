@@ -1,12 +1,10 @@
-﻿using KafkaConsumerRetry.Configuration;
+﻿namespace KafkaConsumerRetry.Services;
 
-namespace KafkaConsumerRetry.Services;
-
-public class RateLimiter : IRateLimiter {
+internal class RateLimiter : IRateLimiter {
     private readonly SemaphoreSlim _semaphore;
 
-    public RateLimiter(RetryServiceConfig config) {
-        _semaphore = new SemaphoreSlim(config.MaxConcurrent);
+    internal RateLimiter(int maxCount) {
+        _semaphore = new SemaphoreSlim(maxCount);
     }
 
     public void Release() {

@@ -2,7 +2,7 @@
 
 namespace KafkaConsumerRetry.Configuration;
 
-public class RetryServiceConfig {
+public class KafkaRetryConfig {
     /// <summary>
     ///     Times that a retry will be attempted before placing in DLQ
     /// </summary>
@@ -31,6 +31,4 @@ public class RetryServiceConfig {
     ///     <seealso cref="Confluent.Kafka.ConsumerConfig" />
     /// </summary>
     public IDictionary<string, string>? RetryKafka { get; set; }
-
-    public int MaxConcurrent { get; set; } = 10;
 }

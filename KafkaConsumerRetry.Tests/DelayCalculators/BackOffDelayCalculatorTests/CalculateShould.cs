@@ -13,10 +13,7 @@ public class CalculateShould {
     [InlineData(1, 0, 1)] // Time in the future. Doesn't really make sense but including it anyway
     [InlineData(1, 1, 2)]
     public void Return_A_Delay(int minutesAfterCurrentTime, int retryCount, int expectedDelay) {
-        var retryServiceConfig = new RetryServiceConfig {
-            RetryBaseTime = TimeSpan.FromMinutes(1)
-        };
-        BackOffDelayCalculator calculator = new(retryServiceConfig);
+        IncrementalBackOffDelayCalculator calculator = new();
 
         var consumeResult = new ConsumeResult<byte[], byte[]> {
             Message = new Message<byte[], byte[]> {

@@ -17,24 +17,25 @@ public class ConsumerRunner : IConsumerRunner {
         _manager = manager;
     }
 
-    public virtual async Task RunConsumersAsync(TopicNaming topicNaming, CancellationToken token) {
-        var originConsumer = _consumerFactory.BuildOriginConsumer(topicNaming);
-        var retryConsumer = _consumerFactory.BuildRetryConsumer(topicNaming);
+    public virtual async Task RunConsumersAsync<TResultHandler>(KafkaRetryConfig kafkaRetryConfig,
+        TopicNaming topicNaming, CancellationToken token) where TResultHandler : IConsumerResultHandler {
+        var originConsumer = _consumerFactory.BuildOriginConsumer(kafkaRetryConfig, topicNaming);
+        var retryConsumer = _consumerFactory.BuildRetryConsumer(kafkaRetryConfig, topicNaming);
 
         originConsumer.Subscribe(topicNaming.Origin);
         retryConsumer.Subscribe(topicNaming.Retries);
 
-        await Task.WhenAll(ConsumeAsync(originConsumer, token),
-            ConsumeAsync(retryConsumer, token));
+        var originConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(originConsumer, token),token);
+        var retryConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(retryConsumer, token),token);
+        await Task.WhenAll(originConsumerTask, retryConsumerTask);
     }
 
-    private async Task ConsumeAsync(IConsumer<byte[], byte[]> consumer,
-        CancellationToken cancellationToken) {
-        await Task.Yield();
+    private void ConsumeAsync<TResultHandler>(IConsumer<byte[], byte[]> consumer,
+        CancellationToken cancellationToken) where TResultHandler : IConsumerResultHandler {
         while (!cancellationToken.IsCancellationRequested) {
             var consumeResult = consumer.Consume(cancellationToken);
 
-            _manager.QueueConsumeResult(consumeResult);
+            _manager.QueueConsumeResult<TResultHandler>(consumeResult);
         }
     }
 }
