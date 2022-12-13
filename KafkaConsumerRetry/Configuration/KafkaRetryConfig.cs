@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 #pragma warning disable CS8618

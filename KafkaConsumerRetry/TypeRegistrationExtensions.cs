@@ -8,7 +8,6 @@ namespace KafkaConsumerRetry;
 
 public static class TypeRegistrationExtensions {
     /// <summary>
-    /// 
     /// </summary>
     /// <param name="collection">Service Collection</param>
     /// <param name="maximumConcurrent">Maximum concurrent message processors. This applies across all consumers</param>

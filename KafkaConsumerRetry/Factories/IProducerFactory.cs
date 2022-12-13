@@ -1,5 +1,4 @@
 ﻿using Confluent.Kafka;
-using KafkaConsumerRetry.Configuration;
 
 namespace KafkaConsumerRetry.Factories;
 

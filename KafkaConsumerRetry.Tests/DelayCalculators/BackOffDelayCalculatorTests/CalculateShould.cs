@@ -1,6 +1,6 @@
 ﻿using KafkaConsumerRetry.DelayCalculators;
 
-namespace KafkaConsumerRetry.Tests.DelayCalculators.BackOffDelayCalculatorTests; 
+namespace KafkaConsumerRetry.Tests.DelayCalculators.BackOffDelayCalculatorTests;
 
 public class CalculateShould {
     [Theory]

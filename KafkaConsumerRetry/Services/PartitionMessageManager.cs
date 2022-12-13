@@ -7,18 +7,18 @@ using Microsoft.Extensions.Logging;
 namespace KafkaConsumerRetry.Services;
 
 public class PartitionMessageManager : IPartitionMessageManager {
-    private readonly IProducerFactory _producerFactory;
     private readonly IDelayCalculator _delayCalculator;
     private readonly ILogger<PartitionMessageManager> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly Dictionary<TopicPartition, PartitionProcessor> _partitionQueues = new();
-    
+    private readonly IProducerFactory _producerFactory;
+
     private readonly IRateLimiter _rateLimiter;
     private readonly IServiceProvider _serviceProvider;
 
     public PartitionMessageManager(IProducerFactory producerFactory,
         IDelayCalculator delayCalculator, ILoggerFactory loggerFactory, IRateLimiter rateLimiter,
-         IServiceProvider serviceProvider) {
+        IServiceProvider serviceProvider) {
         _producerFactory = producerFactory;
         _delayCalculator = delayCalculator;
         _loggerFactory = loggerFactory;
@@ -92,8 +92,9 @@ public class PartitionMessageManager : IPartitionMessageManager {
     private (int CurrentIndex, string NextTopic)
         GetCurrentIndexAndNextTopic(string topic, TopicNames topicNames) {
         // if straight from the main topic, then use first retry
-        if (topic == topicNames.Origin)
+        if (topic == topicNames.Origin) {
             return (0, topicNames.Retries.Any() ? topicNames.Retries[0] : topicNames.DeadLetter);
+        }
 
         // if any of the retries except the last, then use the next
         for (var i = 0; i < topicNames.Retries.Length - 1; i++) {

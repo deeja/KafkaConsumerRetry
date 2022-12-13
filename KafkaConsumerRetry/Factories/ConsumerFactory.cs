@@ -33,12 +33,12 @@ public class ConsumerFactory : IConsumerFactory {
         clusterSettings["enable.auto.commit"] = "true"; // Allow auto commit
     }
 
-    
+
     private IConsumer<byte[], byte[]> BuildConsumer(ConsumerConfig consumerConfig, TopicNames names,
         ProducerConfig producerConfig) {
         var consumerBuilder = new ConsumerBuilder<byte[], byte[]>(consumerConfig);
         // TODO: Passing the TopicNaming through here even though it's a rubbish idea. Will figure it out later.
-       
+
         // Set the actions to occur on partitions coming and going. 
         consumerBuilder.SetPartitionsLostHandler((consumer, list) =>
             _messageManager.HandleLostPartitions(consumer, consumerConfig, list));

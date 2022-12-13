@@ -34,7 +34,7 @@ public class ConsumerRunner : IConsumerRunner {
         CancellationToken cancellationToken) where TResultHandler : IConsumerResultHandler {
         while (!cancellationToken.IsCancellationRequested) {
             var consumeResult = consumer.Consume(cancellationToken);
-            
+
             if (cancellationToken.IsCancellationRequested) {
                 break;
             }

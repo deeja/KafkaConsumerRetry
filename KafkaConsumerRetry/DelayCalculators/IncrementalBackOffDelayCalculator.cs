@@ -1,12 +1,11 @@
 ﻿using Confluent.Kafka;
-using KafkaConsumerRetry.Configuration;
 
 namespace KafkaConsumerRetry.DelayCalculators;
 
 public class IncrementalBackOffDelayCalculator : IDelayCalculator {
-    
-    readonly TimeSpan _baseTime = TimeSpan.FromSeconds(5);
-    
+
+    private readonly TimeSpan _baseTime = TimeSpan.FromSeconds(5);
+
     public TimeSpan Calculate(ConsumeResult<byte[], byte[]> consumeResult, int retryIndex) {
         var originalTime = new DateTimeOffset(consumeResult.Message.Timestamp.UtcDateTime, TimeSpan.Zero);
 

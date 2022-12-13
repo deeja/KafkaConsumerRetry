@@ -27,11 +27,10 @@ public class Runner {
             OriginCluster = new Dictionary<string, string> {
                 ["group.id"] = "my-group-name",
                 ["bootstrap.servers"] = "localhost:9092",
-                ["client.id"] = "client-id",
-              
+                ["client.id"] = "client-id"
             }
         };
-        var topicNaming = _naming.GetTopicNaming(originalName,retryServiceConfig);
+        var topicNaming = _naming.GetTopicNaming(originalName, retryServiceConfig);
 
         await _consumerRunner.RunConsumersAsync<IConsumerResultHandler>(retryServiceConfig, topicNaming, cancellationToken);
     }
@@ -45,7 +44,7 @@ public class Runner {
         for (var i = 0; i < 100; i++) {
             var messageValue = i % 5 == 0 ? "THROW" : "WAIT";
             var message = new Message<byte[], byte[]> {
-                Key = Encoding.UTF8.GetBytes(i + "-" + DateTime.Now.ToString(CultureInfo.InvariantCulture)),
+                Key = Encoding.UTF8.GetBytes($"{i}-{DateTime.Now.ToString(CultureInfo.InvariantCulture)}"),
                 Value = Encoding.UTF8.GetBytes(messageValue)
             };
             await producer.ProduceAsync("my.topic", message);
