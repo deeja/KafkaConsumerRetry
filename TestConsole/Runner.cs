@@ -33,7 +33,7 @@ public class Runner {
         };
         var topicNaming = _naming.GetTopicNaming(originalName,retryServiceConfig);
 
-        await _consumerRunner.RunConsumersAsync<TestingResultHandler>(retryServiceConfig, topicNaming, cancellationToken);
+        await _consumerRunner.RunConsumersAsync<IConsumerResultHandler>(retryServiceConfig, topicNaming, cancellationToken);
     }
 
     private async Task GenerateMessagesAsync() {
