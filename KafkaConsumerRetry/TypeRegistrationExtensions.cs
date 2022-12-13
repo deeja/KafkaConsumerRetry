@@ -19,7 +19,7 @@ public static class TypeRegistrationExtensions {
             .AddSingleton<IConsumerFactory, ConsumerFactory>()
             .AddSingleton<IRateLimiter>(_ => new RateLimiter(maximumConcurrent))
             .AddSingleton<IConsumerRunner, ConsumerRunner>()
-            .AddSingleton<IPartitionManager, PartitionManager>()
+            .AddSingleton<IPartitionMessageManager, PartitionMessageManager>()
             .AddSingleton<ITopicNaming, TopicNaming>();
     }
 }

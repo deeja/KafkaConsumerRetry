@@ -5,36 +5,47 @@ using KafkaConsumerRetry.Services;
 namespace KafkaConsumerRetry.Factories;
 
 public class ConsumerFactory : IConsumerFactory {
-    private readonly IPartitionManager _manager;
+    private readonly IPartitionMessageManager _messageManager;
 
-    public ConsumerFactory(IPartitionManager manager) {
-        _manager = manager;
+    public ConsumerFactory(IPartitionMessageManager messageManager) {
+        _messageManager = messageManager;
     }
 
-    public IConsumer<byte[], byte[]> BuildOriginConsumer(KafkaRetryConfig config, TopicNaming naming) {
-        var consumerConfig = new ConsumerConfig(config.TopicKafka);
-        var producerConfig = new ProducerConfig(config.RetryKafka ?? config.TopicKafka);
-        return BuildConsumer(consumerConfig, naming, producerConfig);
+    public IConsumer<byte[], byte[]> BuildOriginConsumer(KafkaRetryConfig config, TopicNames names) {
+        var cluster = config.OriginCluster;
+        SetClusterDefaults(cluster);
+        var consumerConfig = new ConsumerConfig(cluster);
+        var producerConfig = new ProducerConfig(config.RetryCluster ?? cluster);
+        return BuildConsumer(consumerConfig, names, producerConfig);
     }
 
-    public IConsumer<byte[], byte[]> BuildRetryConsumer(KafkaRetryConfig config, TopicNaming naming) {
-        var consumerConfig = new ConsumerConfig(config.RetryKafka ?? config.TopicKafka);
-        var producerConfig = new ProducerConfig(config.RetryKafka ?? config.TopicKafka);
-        return BuildConsumer(consumerConfig, naming, producerConfig);
+    public IConsumer<byte[], byte[]> BuildRetryConsumer(KafkaRetryConfig config, TopicNames names) {
+        var cluster = config.RetryCluster ?? config.OriginCluster;
+        SetClusterDefaults(cluster);
+        var consumerConfig = new ConsumerConfig(cluster);
+        var producerConfig = new ProducerConfig(cluster);
+        return BuildConsumer(consumerConfig, names, producerConfig);
     }
 
-    private IConsumer<byte[], byte[]> BuildConsumer(ConsumerConfig consumerConfig, TopicNaming naming,
+    protected virtual void SetClusterDefaults(IDictionary<string, string> clusterSettings) {
+        clusterSettings["auto.offset.reset"] = "earliest"; // Get the first available messages when setting up consumer group
+        clusterSettings["enable.auto.offset.store"] = "false"; //Don't auto save the offset; this is done inside the error handling
+        clusterSettings["enable.auto.commit"] = "true"; // Allow auto commit
+    }
+
+    
+    private IConsumer<byte[], byte[]> BuildConsumer(ConsumerConfig consumerConfig, TopicNames names,
         ProducerConfig producerConfig) {
         var consumerBuilder = new ConsumerBuilder<byte[], byte[]>(consumerConfig);
         // TODO: Passing the TopicNaming through here even though it's a rubbish idea. Will figure it out later.
-
-        // (Incremental balancing) Assign/Unassign must not be called in the handler.
+       
+        // Set the actions to occur on partitions coming and going. 
         consumerBuilder.SetPartitionsLostHandler((consumer, list) =>
-            _manager.HandleLostPartitions(consumer, consumerConfig, list));
+            _messageManager.HandleLostPartitions(consumer, consumerConfig, list));
         consumerBuilder.SetPartitionsAssignedHandler((consumer, list) =>
-            _manager.HandleAssignedPartitions(consumer,  consumerConfig, list, naming, producerConfig));
+            _messageManager.HandleAssignedPartitions(consumer, consumerConfig, list, names, producerConfig));
         consumerBuilder.SetPartitionsRevokedHandler((consumer, list) =>
-            _manager.HandleRevokedPartitions(consumer,  consumerConfig, list));
+            _messageManager.HandleRevokedPartitions(consumer, consumerConfig, list));
         return consumerBuilder.Build();
     }
 }

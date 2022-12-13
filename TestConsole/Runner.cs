@@ -24,14 +24,11 @@ public class Runner {
 
         var retryServiceConfig = new KafkaRetryConfig {
             RetryAttempts = 3,
-            RetryBaseTime = TimeSpan.FromSeconds(5),
-            TopicKafka = new Dictionary<string, string> {
+            OriginCluster = new Dictionary<string, string> {
                 ["group.id"] = "my-group-name",
                 ["bootstrap.servers"] = "localhost:9092",
                 ["client.id"] = "client-id",
-                ["auto.offset.reset"] = "earliest",
-                ["enable.auto.offset.store"] = "false", //Don't auto save the offset
-                ["enable.auto.commit"] = "true" // Allow auto commit
+              
             }
         };
         var topicNaming = _naming.GetTopicNaming(originalName,retryServiceConfig);

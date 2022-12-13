@@ -9,24 +9,24 @@ namespace KafkaConsumerRetry.Services;
 /// </summary>
 public class ConsumerRunner : IConsumerRunner {
     private readonly IConsumerFactory _consumerFactory;
-    private readonly IPartitionManager _manager;
+    private readonly IPartitionMessageManager _messageManager;
 
     public ConsumerRunner(IConsumerFactory consumerFactory,
-        IPartitionManager manager) {
+        IPartitionMessageManager messageManager) {
         _consumerFactory = consumerFactory;
-        _manager = manager;
+        _messageManager = messageManager;
     }
 
     public virtual async Task RunConsumersAsync<TResultHandler>(KafkaRetryConfig kafkaRetryConfig,
-        TopicNaming topicNaming, CancellationToken token) where TResultHandler : IConsumerResultHandler {
-        var originConsumer = _consumerFactory.BuildOriginConsumer(kafkaRetryConfig, topicNaming);
-        var retryConsumer = _consumerFactory.BuildRetryConsumer(kafkaRetryConfig, topicNaming);
+        TopicNames topicNames, CancellationToken token) where TResultHandler : IConsumerResultHandler {
+        var originConsumer = _consumerFactory.BuildOriginConsumer(kafkaRetryConfig, topicNames);
+        var retryConsumer = _consumerFactory.BuildRetryConsumer(kafkaRetryConfig, topicNames);
 
-        originConsumer.Subscribe(topicNaming.Origin);
-        retryConsumer.Subscribe(topicNaming.Retries);
+        originConsumer.Subscribe(topicNames.Origin);
+        retryConsumer.Subscribe(topicNames.Retries);
 
-        var originConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(originConsumer, token),token);
-        var retryConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(retryConsumer, token),token);
+        var originConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(originConsumer, token), token);
+        var retryConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(retryConsumer, token), token);
         await Task.WhenAll(originConsumerTask, retryConsumerTask);
     }
 
@@ -34,8 +34,12 @@ public class ConsumerRunner : IConsumerRunner {
         CancellationToken cancellationToken) where TResultHandler : IConsumerResultHandler {
         while (!cancellationToken.IsCancellationRequested) {
             var consumeResult = consumer.Consume(cancellationToken);
+            
+            if (cancellationToken.IsCancellationRequested) {
+                break;
+            }
 
-            _manager.QueueConsumeResult<TResultHandler>(consumeResult);
+            _messageManager.QueueConsumeResult<TResultHandler>(consumeResult);
         }
     }
 }

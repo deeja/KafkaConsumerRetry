@@ -6,23 +6,23 @@ using Microsoft.Extensions.Logging;
 
 namespace KafkaConsumerRetry.Services;
 
-public class PartitionManager : IPartitionManager {
+public class PartitionMessageManager : IPartitionMessageManager {
     private readonly IProducerFactory _producerFactory;
     private readonly IDelayCalculator _delayCalculator;
-    private readonly ILogger<PartitionManager> _logger;
+    private readonly ILogger<PartitionMessageManager> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly Dictionary<TopicPartition, PartitionProcessor> _partitionQueues = new();
     
     private readonly IRateLimiter _rateLimiter;
     private readonly IServiceProvider _serviceProvider;
 
-    public PartitionManager(IProducerFactory producerFactory,
+    public PartitionMessageManager(IProducerFactory producerFactory,
         IDelayCalculator delayCalculator, ILoggerFactory loggerFactory, IRateLimiter rateLimiter,
          IServiceProvider serviceProvider) {
         _producerFactory = producerFactory;
         _delayCalculator = delayCalculator;
         _loggerFactory = loggerFactory;
-        _logger = _loggerFactory.CreateLogger<PartitionManager>();
+        _logger = _loggerFactory.CreateLogger<PartitionMessageManager>();
         _rateLimiter = rateLimiter;
         _serviceProvider = serviceProvider;
     }
@@ -50,7 +50,7 @@ public class PartitionManager : IPartitionManager {
 
     public void HandleAssignedPartitions(IConsumer<byte[], byte[]> consumer, ConsumerConfig consumerConfig,
         List<TopicPartition> list,
-        TopicNaming topicNaming, ProducerConfig producerConfig) {
+        TopicNames topicNames, ProducerConfig producerConfig) {
         _logger.LogInformation("ASSIGNED PARTITIONS {TopicPartitions}", list);
         // get the group id from the setting for the retry -- need a better way of doing this
         var retryGroupId = consumerConfig.GroupId;
@@ -58,7 +58,7 @@ public class PartitionManager : IPartitionManager {
         var retryProducer = _producerFactory.BuildRetryProducer(producerConfig);
         // TODO: this is not great. shouldn't return the current index and next topic
         foreach (var topicPartition in list) {
-            var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(topicPartition.Topic, topicNaming);
+            var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(topicPartition.Topic, topicNames);
             _partitionQueues.Add(topicPartition,
                 new PartitionProcessor(_loggerFactory, _serviceProvider, _delayCalculator, _rateLimiter, consumer,
                     topicPartition,
@@ -87,23 +87,23 @@ public class PartitionManager : IPartitionManager {
     ///     Gets the current index of the topic, and also the next topic to push to
     /// </summary>
     /// <param name="topic"></param>
-    /// <param name="topicNaming"></param>
+    /// <param name="topicNames"></param>
     /// <returns></returns>
     private (int CurrentIndex, string NextTopic)
-        GetCurrentIndexAndNextTopic(string topic, TopicNaming topicNaming) {
+        GetCurrentIndexAndNextTopic(string topic, TopicNames topicNames) {
         // if straight from the main topic, then use first retry
-        if (topic == topicNaming.Origin)
-            return (0, topicNaming.Retries.Any() ? topicNaming.Retries[0] : topicNaming.DeadLetter);
+        if (topic == topicNames.Origin)
+            return (0, topicNames.Retries.Any() ? topicNames.Retries[0] : topicNames.DeadLetter);
 
         // if any of the retries except the last, then use the next
-        for (var i = 0; i < topicNaming.Retries.Length - 1; i++) {
-            if (topicNaming.Retries[i] == topic) {
+        for (var i = 0; i < topicNames.Retries.Length - 1; i++) {
+            if (topicNames.Retries[i] == topic) {
                 var retryIndex = i + 1;
-                return (retryIndex, topicNaming.Retries[retryIndex]);
+                return (retryIndex, topicNames.Retries[retryIndex]);
             }
         }
 
         // otherwise dlq -- must have at least one 
-        return (Math.Max(1, topicNaming.Retries.Length + 1), topicNaming.DeadLetter);
+        return (Math.Max(1, topicNames.Retries.Length + 1), topicNames.DeadLetter);
     }
 }

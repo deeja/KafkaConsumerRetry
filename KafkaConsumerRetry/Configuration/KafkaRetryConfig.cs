@@ -1,4 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+#pragma warning disable CS8618
 
 namespace KafkaConsumerRetry.Configuration;
 
@@ -10,25 +13,15 @@ public class KafkaRetryConfig {
     public int RetryAttempts { get; set; }
 
     /// <summary>
-    ///     Timespan before retry
-    /// </summary>
-    /// <remarks>
-    ///     [d'.']hh':'mm':'ss['.'fffffff].
-    ///     https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-timespan-format-strings
-    /// </remarks>
-    [Required]
-    public TimeSpan RetryBaseTime { get; set; }
-
-    /// <summary>
     ///     Server settings where the original topic is located
     /// </summary>
     [Required]
-    public IDictionary<string, string> TopicKafka { get; set; }
+    public IDictionary<string, string> OriginCluster { get; set; }
 
     /// <summary>
-    ///     Server settings for the retries. If empty, the service will default to using <see cref="TopicKafka" />
+    ///     Server settings for the retries. If empty, the service will default to using <see cref="OriginCluster" />
     ///     Properties should match those found in <see cref="Confluent.Kafka.ProducerConfig" /> and
     ///     <seealso cref="Confluent.Kafka.ConsumerConfig" />
     /// </summary>
-    public IDictionary<string, string>? RetryKafka { get; set; }
+    public IDictionary<string, string>? RetryCluster { get; set; }
 }
