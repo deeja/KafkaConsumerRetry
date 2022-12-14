@@ -4,11 +4,17 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
-        <TargetFrameworks>net6.0;</TargetFrameworks>
+        <TargetFrameworks>net6.0</TargetFrameworks>
         <PackageId>KafkaConsumerRetry</PackageId>
-        <Version>0.1.0</Version>
+        <PackageVersion>0.1.2</PackageVersion>        
         <Authors>deeja</Authors>
+        <Description>Framework for the use of multiple Kafka timed retry queues; based on the Uber retry strategy</Description>
         <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/deeja/KafkaConsumerRetry.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageProjectUrl>https://github.com/deeja/KafkaConsumerRetry</PackageProjectUrl>
+        <PackageTags>kafka dotnet csharp retry failure error</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,7 +24,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="icon.png" Pack="true" PackagePath=""/>
+        <None Include="icon.png" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\README.md"  Pack="true" PackagePath="">
+        <Link>README.md</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
