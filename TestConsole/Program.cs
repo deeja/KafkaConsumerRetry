@@ -1,5 +1,3 @@
-// See https://aka.ms/new-console-template for more information
-
 using KafkaConsumerRetry;
 using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.DependencyInjection;
