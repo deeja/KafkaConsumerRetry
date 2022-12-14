@@ -5,12 +5,20 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <TargetFrameworks>net6.0;</TargetFrameworks>
+        <PackageId>KafkaConsumerRetry</PackageId>
+        <Version>0.1.0</Version>
+        <Authors>deeja</Authors>
+        <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Confluent.Kafka" Version="1.9.3" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="icon.png" Pack="true" PackagePath=""/>
     </ItemGroup>
 
 </Project>
