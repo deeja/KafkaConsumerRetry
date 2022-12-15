@@ -3,6 +3,7 @@
 # UBER style retry architecture
  - .Net Kafka Retry framework
  - Uses [Confluent's Kafka for .Net](https://github.com/confluentinc/confluent-kafka-dotnet)
+ - Supports Apache Kafka, Confluent Cloud, Event Hub and any other service that has a standard Kafka API
 ## Features:
 - Multi cluster; retries can be on a different Kafka cluster. i.e. one that is in your control
 - Timeouts and Retries are configurable
