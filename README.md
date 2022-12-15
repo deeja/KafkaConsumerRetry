@@ -1,6 +1,8 @@
-﻿# UBER style retry architecture
- .Net6 Library for Kafka Retries
  [![image](https://img.shields.io/nuget/v/KafkaConsumerRetry.svg?style=flat-square&label=nuget)](https://www.nuget.org/packages/KafkaConsumerRetry/)
+
+# UBER style retry architecture
+ - .Net Kafka Retry framework
+ - Uses [Confluent's Kafka for .Net](https://github.com/confluentinc/confluent-kafka-dotnet)
 ## Features:
 - Multi cluster; retries can be on a different Kafka cluster. i.e. one that is in your control
 - Timeouts and Retries are configurable
