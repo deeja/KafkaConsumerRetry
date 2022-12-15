@@ -1,4 +1,5 @@
 ﻿# UBER style retry architecture
+ [![image](https://img.shields.io/nuget/v/KafkaConsumerRetry.svg?style=flat-square&label=nuget)](https://www.nuget.org/packages/KafkaConsumerRetry/)
 ## Features:
 - Multi cluster; retries can be on a different Kafka cluster. i.e. one that is in your control
 - Timeouts and Retries are configurable
