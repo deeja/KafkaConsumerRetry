@@ -1,6 +1,7 @@
  [![image](https://img.shields.io/nuget/v/KafkaConsumerRetry.svg?style=flat-square&label=nuget)](https://www.nuget.org/packages/KafkaConsumerRetry/)
 
-# UBER style retry architecture
+# KafkaConsumerRetry for .Net
+A framework based on the UBER style of retry architecture
  - .Net Kafka Retry framework
  - Uses [Confluent's Kafka for .Net](https://github.com/confluentinc/confluent-kafka-dotnet)
  - Supports Apache Kafka, Confluent Cloud, Event Hub and any other service that has a standard Kafka API
