@@ -1,21 +1,38 @@
- [![image](https://img.shields.io/nuget/v/KafkaConsumerRetry.svg?style=flat-square&label=nuget)](https://www.nuget.org/packages/KafkaConsumerRetry/)
+﻿ [![image](https://img.shields.io/nuget/v/KafkaConsumerRetry.svg?style=flat-square&label=nuget)](https://www.nuget.org/packages/KafkaConsumerRetry/)
 
 # KafkaConsumerRetry for .Net
 A framework based on the UBER style of retry architecture
  - .Net Kafka Retry framework
  - Uses [Confluent's Kafka for .Net](https://github.com/confluentinc/confluent-kafka-dotnet)
  - Supports Apache Kafka, Confluent Cloud, Event Hub and any other service that has a standard Kafka API
+ 
+The original Uber article text is in the local [ARTICLE.md](./ARTICLE.md) or
+on [Uber](https://eng.uber.com/reliable-reprocessing/)
+
+
 ## Features:
 - Multi cluster; retries can be on a different Kafka cluster. i.e. one that is in your control
 - Timeouts and Retries are configurable
-- Topic names are configurable
+- Retry topic names are configurable
 - Restrict number of "messages at a time"
 - Partition "pausing" using the `librdkafka` API
 - Gracefully handles allocation/loss of a consumer's partitions
 
 ## How do I use it?
 
-Check out the [ExampleProject](./ExampleProject/ExampleProject.csproj) in the root directory 
+Check out the [ExampleProject](./ExampleProject/) in the root directory for an example configuration. There is also the [TestConsole](./TestConsole/) which creates the topics, and pushes hundreds of messages to test the library.
+
+The relevant topics will need to be created before the retry will work.
+The test console project creates the topics using the Kafka Admin provided by Confluent's Kafka Library.
+
+Using the default naming convention class `TopicNaming`:
+- Retries are `{topic}.retry.{index}` with an start index of 0 (zero)
+- DLQ's are `{topic}.dlq`
+
+If you are wanting to use a different naming strategy, that can be done by implementing the `ITopicNaming` interface.
+
+3 retry topics + a DLQ seems to be a good compromise of retry attempts, as the first one is used fairly often for DB insert collisions. The last 2 are for stickier errors usually related to network outages or service issues. 
+
 
 ## Does it support deserialisation?
 Yes. Take a look at the example project's handler.  
@@ -24,6 +41,8 @@ Yes. Take a look at the example project's handler.
 Sometimes things don't work the first time, and that's ok.
 A good example is when two events at the same time tell a processor to either update or create an entity in a database.
 ```mermaid
+%% This diagram is not rendering on this site. View it on GitHub
+
 sequenceDiagram
     participant A1 as Subscriber One
     participant DB as Database
@@ -39,7 +58,7 @@ sequenceDiagram
     note over A2: Delay Execution before retry
     A2->>DB: Have you got X?
     DB->>A2: Yes, here you go.
-    note over A2: Check that X should be updated
+    note over A2: Should X should be updated?
     A2->>DB: Update X
     DB->>A2: Ok
 ```
@@ -48,6 +67,8 @@ Embracing the retry means not being too concerned about timing issues
 
 ## The Happy/Sad Path of a failing message
 ```mermaid
+%% This diagram is not rendering on this site. View it on GitHub
+
 sequenceDiagram
     participant OT as Origin Topic
     participant CG as Consumer Group
@@ -80,8 +101,6 @@ sequenceDiagram
 - If there are multiple consumer groups using the same retry topics, and more than one of those consumer groups fails, multiple copies of the message that failed will appear in the retry queue. This is normal and not a bug. 
 
 
-The original article text is in the local [ARTICLE.md](ARTICLE.md) or
-on [Uber](https://eng.uber.com/reliable-reprocessing/)
 
 
 ### Main considerations that have been avoided by this library
@@ -111,29 +130,6 @@ Pushing messages to the main topic for retries is dirty.
 - Reduces visibility of system functions e.g. A dev asking "why is this message here multiple times?"
 - You may not have the rights to push to the origin server topic
 - Services that are not part of your retry system may be looking at that topic and process the message again
-
-
-## Usage
-
-This section might be out of date as this develops, so for the truth refer to the `TestConsole.csproj` 
-
-```csharp
-
-var retryServiceConfig = new KafkaRetryConfig {
-        RetryAttempts = 3,
-        RetryBaseTime = TimeSpan.FromSeconds(5),
-        OriginCluster = new Dictionary<string, string> {
-            ["group.id"] = "my-group-name",
-            ["bootstrap.servers"] = "localhost:9092",
-            ["client.id"] = "client-id",
-            ["auto.offset.reset"] = "earliest",
-            ["enable.auto.offset.store"] = "false", //Don't auto save the offset
-            ["enable.auto.commit"] = "true" // Allow auto commit
-        }
-    };
-var topicNaming = _naming.GetTopicNaming(originalName,retryServiceConfig);
-await _consumerRunner.RunConsumersAsync<TestingResultHandler>(retryServiceConfig, topicNaming, cancellationToken);
-```
 
 ## Deep dive
 
