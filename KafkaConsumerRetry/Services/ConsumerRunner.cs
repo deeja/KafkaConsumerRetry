@@ -1,6 +1,7 @@
 ﻿using Confluent.Kafka;
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Factories;
+using KafkaConsumerRetry.Handlers;
 
 namespace KafkaConsumerRetry.Services;
 

@@ -1,4 +1,5 @@
 using KafkaConsumerRetry;
+using KafkaConsumerRetry.Handlers;
 using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

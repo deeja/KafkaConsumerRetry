@@ -1,4 +1,6 @@
-﻿using KafkaConsumerRetry;
+﻿using Confluent.Kafka;
+using ExampleProject;
+using KafkaConsumerRetry;
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Services;
 using KafkaConsumerRetry.SupportTopicNaming;
@@ -8,6 +10,9 @@ var collection = new ServiceCollection();
 const int maximumConcurrent = 10;
 // Add default services
 collection.AddKafkaConsumerRetry(maximumConcurrent);
+
+collection.AddSingleton<IDeserializer<string>>(_ => Deserializers.Utf8);
+collection.AddSingleton<IDeserializer<MyEvent>, MyEventDeserializer>();
 
 var serviceProvider = collection.BuildServiceProvider();
 
@@ -29,4 +34,4 @@ var kafkaRetryConfig = new KafkaRetryConfig {
 };
 
 var topicNaming = new TopicNaming().GetTopicNaming("mytopic", kafkaRetryConfig);
-await requiredService.RunConsumersAsync<MyCustomHandler>(kafkaRetryConfig, topicNaming, CancellationToken.None);
+await requiredService.RunConsumersAsync<ExampleTypedHandler>(kafkaRetryConfig, topicNaming, CancellationToken.None);

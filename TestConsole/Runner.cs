@@ -3,6 +3,7 @@ using System.Text;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 using KafkaConsumerRetry.Configuration;
+using KafkaConsumerRetry.Handlers;
 using KafkaConsumerRetry.Services;
 using KafkaConsumerRetry.SupportTopicNaming;
 

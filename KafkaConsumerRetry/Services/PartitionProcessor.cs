@@ -2,6 +2,7 @@
 using System.Text;
 using Confluent.Kafka;
 using KafkaConsumerRetry.DelayCalculators;
+using KafkaConsumerRetry.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

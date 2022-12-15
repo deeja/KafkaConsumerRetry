@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Confluent.Kafka;
+using KafkaConsumerRetry.Handlers;
 using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.Logging;
 
@@ -12,11 +13,11 @@ internal class TestingResultHandler : IConsumerResultHandler {
         _logger = logger;
     }
 
-    public async Task HandleAsync(ConsumeResult<byte[], byte[]> message, CancellationToken cancellationToken) {
-        var messageString = Encoding.UTF8.GetString(message.Message.Value);
+    public async Task HandleAsync(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken) {
+        var messageString = Encoding.UTF8.GetString(consumeResult.Message.Value);
 
         _logger.LogInformation("Message: {MessageString} - Topic: {TopicPartitionOffset}", messageString,
-            message.TopicPartitionOffset);
+            consumeResult.TopicPartitionOffset);
 
         switch (messageString) {
             case "DIE":

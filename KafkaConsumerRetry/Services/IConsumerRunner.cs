@@ -1,4 +1,5 @@
 ﻿using KafkaConsumerRetry.Configuration;
+using KafkaConsumerRetry.Handlers;
 
 namespace KafkaConsumerRetry.Services;
 

@@ -2,6 +2,7 @@
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.DelayCalculators;
 using KafkaConsumerRetry.Factories;
+using KafkaConsumerRetry.Handlers;
 using Microsoft.Extensions.Logging;
 
 namespace KafkaConsumerRetry.Services;
