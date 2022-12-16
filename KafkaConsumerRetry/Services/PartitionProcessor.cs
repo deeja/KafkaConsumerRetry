@@ -37,7 +37,7 @@ internal class PartitionProcessor : IDisposable {
     private readonly CancellationTokenSource _workerTokenSource;
 
     private bool _isPaused;
-    private bool _revoked;
+    private bool _partitionRevoked;
 
     public PartitionProcessor(ILoggerFactory factory,
         IServiceProvider serviceProvider,
@@ -72,49 +72,64 @@ internal class PartitionProcessor : IDisposable {
     private async Task DoWorkAsync() {
         await Task.Yield();
         var cancellationToken = _workerTokenSource.Token;
-        while (!(cancellationToken.IsCancellationRequested || _revoked)) {
+        while (!(cancellationToken.IsCancellationRequested || _partitionRevoked)) {
             if (_consumeResultQueue.TryDequeue(out var tuple)) {
                 var consumeResult = tuple.ConsumeResult;
                 _logger.LogTrace("[{TopicPartition}] - Dequeued {Key}", _topicPartition, consumeResult.Message.Key);
                 try {
-                    var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
-                    await Task.Delay(delayTime, cancellationToken);
-                    await _rateLimiter.WaitAsync(cancellationToken);
-                    if (cancellationToken.IsCancellationRequested) {
+                    var getNext = await CallHandler(consumeResult, cancellationToken, tuple);
+                    if (!getNext) {
                         break;
                     }
-
-                    using (var serviceScope = _serviceProvider.CreateScope()) {
-                        var handler = (IConsumerResultHandler)serviceScope.ServiceProvider.GetRequiredService(tuple.Handler);
-                        await handler.HandleAsync(consumeResult, cancellationToken);
-                    }
-
-                    _consumer.StoreOffset(consumeResult); // don't put outside the loop due to the break
                 }
                 catch (Exception handledException) {
-                    _logger.LogError(handledException,
-                        "Failed to process message. Pushing to next topic: `{RetryQueue}`. Message Key: `{MessageKey}`",
-                        _nextTopic, consumeResult.Message.Key);
-                    AppendException(handledException, _retryGroupId, consumeResult.Message);
-                    SetTimestamp(consumeResult);
-                    await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message,
-                        cancellationToken);
-                    _consumer.StoreOffset(consumeResult); // need to set after handing off to retry
+                    await HandleException(handledException, consumeResult, cancellationToken);
                 }
                 finally {
+                    // _rateLimiter used inside CallHandler
                     _rateLimiter.Release();
                 }
             }
             else {
                 await Task.Delay(100, cancellationToken);
-                // TODO: semaphore or something here rather than a delay
+                // TODO: semaphore or something here rather than a delay on queue miss
             }
 
+            // if is paused, then resume as a message has been added
             if (_isPaused) {
                 _consumer.Resume(new[] { _topicPartition });
                 _isPaused = false;
             }
         }
+    }
+
+    private async Task HandleException(Exception handledException, ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken) {
+        _logger.LogError(handledException,
+            "Failed to process message. Pushing to next topic: `{RetryQueue}`. Message Key: `{MessageKey}`",
+            _nextTopic, consumeResult.Message.Key);
+        AppendException(handledException, _retryGroupId, consumeResult.Message);
+        SetTimestamp(consumeResult);
+        await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message,
+            cancellationToken);
+        _consumer.StoreOffset(consumeResult); // need to set after handing off to retry
+    }
+
+    private async Task<bool> CallHandler(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken,
+        (Type Handler, ConsumeResult<byte[], byte[]> ConsumeResult) tuple) {
+        var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
+        await Task.Delay(delayTime, cancellationToken);
+        await _rateLimiter.WaitAsync(cancellationToken);
+        if (cancellationToken.IsCancellationRequested) {
+            return false;
+        }
+
+        using (var serviceScope = _serviceProvider.CreateScope()) {
+            var handler = (IConsumerResultHandler)serviceScope.ServiceProvider.GetRequiredService(tuple.Handler);
+            await handler.HandleAsync(consumeResult, cancellationToken);
+        }
+
+        _consumer.StoreOffset(consumeResult); // don't put outside the loop due to the break
+        return true;
     }
 
     private void SetTimestamp(ConsumeResult<byte[], byte[]> consumeResult) {
@@ -155,7 +170,7 @@ internal class PartitionProcessor : IDisposable {
 
     public async Task RevokeAsync() {
         _logger.LogTrace("REVOKING self: {TopicPartition}", _topicPartition);
-        _revoked = true;
+        _partitionRevoked = true;
         await _coreTask;
     }
 }

@@ -33,5 +33,15 @@ var kafkaRetryConfig = new KafkaRetryConfig {
     }
 };
 
-var topicNaming = new TopicNaming().GetTopicNaming("mytopic", kafkaRetryConfig);
-await requiredService.RunConsumersAsync<ExampleTypedHandler>(kafkaRetryConfig, topicNaming, CancellationToken.None);
+var topicNaming = new TopicNaming();
+
+// Example of a typed key/value handler
+var myEventTopicNaming = topicNaming.GetTopicNaming("myevents", kafkaRetryConfig);
+var exampleTypedConsumerTask = requiredService.RunConsumersAsync<ExampleTypedHandler>(kafkaRetryConfig, myEventTopicNaming, CancellationToken.None);
+
+// Example of a byte[] key/value handler
+var byteTopicNaming = topicNaming.GetTopicNaming("mybytes", kafkaRetryConfig);
+var exampleByteConsumerTask = requiredService.RunConsumersAsync<ExampleByteHandler>(kafkaRetryConfig, byteTopicNaming, CancellationToken.None);
+
+// await all tasks
+await Task.WhenAll(exampleByteConsumerTask, exampleTypedConsumerTask);
