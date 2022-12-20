@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 var collection = new ServiceCollection();
 const int maximumConcurrent = 10;
 // Add default services
-collection.AddKafkaConsumerRetry(maximumConcurrent);
+collection.AddKafkaConsumerRetry(maximumConcurrent, TimeSpan.FromSeconds(5));
 
 collection.AddSingleton<IDeserializer<string>>(_ => Deserializers.Utf8);
 collection.AddSingleton<IDeserializer<MyEvent>, MyEventDeserializer>();
@@ -36,11 +36,11 @@ var kafkaRetryConfig = new KafkaRetryConfig {
 var topicNaming = new TopicNaming();
 
 // Example of a typed key/value handler
-var myEventTopicNaming = topicNaming.GetTopicNaming("myevents", kafkaRetryConfig);
+var myEventTopicNaming = topicNaming.GetTopicNaming("myevents.topic.example", kafkaRetryConfig);
 var exampleTypedConsumerTask = requiredService.RunConsumersAsync<ExampleTypedHandler>(kafkaRetryConfig, myEventTopicNaming, CancellationToken.None);
 
 // Example of a byte[] key/value handler
-var byteTopicNaming = topicNaming.GetTopicNaming("mybytes", kafkaRetryConfig);
+var byteTopicNaming = topicNaming.GetTopicNaming("mybytes.topic.example", kafkaRetryConfig);
 var exampleByteConsumerTask = requiredService.RunConsumersAsync<ExampleByteHandler>(kafkaRetryConfig, byteTopicNaming, CancellationToken.None);
 
 // await all tasks

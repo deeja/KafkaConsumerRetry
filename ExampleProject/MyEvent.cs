@@ -1,3 +1,5 @@
-﻿public class MyEvent {
-    public string SomeProperty { get; set; }
+﻿namespace ExampleProject;
+
+public class MyEvent {
+    public string? SomeProperty { get; set; }
 }
