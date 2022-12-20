@@ -8,7 +8,7 @@ using TestConsole;
 
 IServiceCollection services = new ServiceCollection();
 
-services.AddKafkaConsumerRetry(30);
+services.AddKafkaConsumerRetry(30, TimeSpan.FromSeconds(2));
 services.AddLogging(builder => builder.AddSimpleConsole(options => {
     options.ColorBehavior = LoggerColorBehavior.Default;
     options.IncludeScopes = true;
