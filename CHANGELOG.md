@@ -2,12 +2,16 @@
 
 ## Unreleased
 
-### Fixed
-
+### Changed
+- README.md
+- `IDelayCalculator` returns a `DateTimeOffset` rather than a delay `TimeSpan`; easier to check.
 
 ### Added 
-- Added CHANGELOG.md
+- CHANGELOG.md
 - ByteHandler example
+
+### Fixed
+
 
 ## [0.1.4] - 2022-12-15
 
