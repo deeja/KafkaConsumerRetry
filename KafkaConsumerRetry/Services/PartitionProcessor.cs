@@ -116,8 +116,15 @@ internal class PartitionProcessor : IDisposable {
 
     private async Task<bool> CallHandler(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken,
         (Type Handler, ConsumeResult<byte[], byte[]> ConsumeResult) tuple) {
+        
         var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
-        await Task.Delay(delayTime, cancellationToken);
+
+        if (delayTime > DateTimeOffset.Now) {
+            var delayTimespan = delayTime - DateTimeOffset.Now;
+            var delayMs = Math.Max(delayTimespan.Milliseconds,0);
+            await Task.Delay(delayMs, cancellationToken);    
+        }
+        
         await _rateLimiter.WaitAsync(cancellationToken);
         if (cancellationToken.IsCancellationRequested) {
             return false;
