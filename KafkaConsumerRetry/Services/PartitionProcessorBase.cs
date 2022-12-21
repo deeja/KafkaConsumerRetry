@@ -1,7 +1,9 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Confluent.Kafka;
 using KafkaConsumerRetry.DelayCalculators;
+using KafkaConsumerRetry.Exceptions;
 using KafkaConsumerRetry.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,44 +11,71 @@ using Microsoft.Extensions.Logging;
 namespace KafkaConsumerRetry.Services;
 
 /// <summary>
-///     Rolls through queued messages, working on them and pushing them to the next retry if there is a failure
+///     Assigned per Partition, this class processes queued messages for that partition.
+///     Processing failures are pushed to the next retry topic.
 /// </summary>
+/// <remarks>
+///     The top inheriting class should be sealed. This helps with performance significantly due to the number of virtual
+///     methods.
+/// </remarks>
+[SuppressMessage("ReSharper", "VirtualMemberNeverOverridden.Global")]
+[SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class PartitionProcessorBase : IDisposable, IPartitionProcessor {
-    private const string LastExceptionKey = "LAST_EXCEPTION";
-
-    private const int PauseThreshold = 20;
-    private const string RetryConsumerGroupIdKey = "RETRY_GROUP_ID";
-    private readonly IConsumer<byte[], byte[]> _consumer;
+    private protected const string LastExceptionKey = "KCR_LAST_EXCEPTION";
+    private protected const string RetryConsumerGroupIdKey = "KCR_RETRY_GROUP_ID";
+    private protected readonly IConsumer<byte[], byte[]> _consumer;
 
     /// <summary>
     ///     Tasks that are to be run by this context
     /// </summary>
-    private readonly ConcurrentQueue<(Type Handler, ConsumeResult<byte[], byte[]> ConsumeResult)> _consumeResultQueue = new();
+    private protected readonly ConcurrentQueue<(Type Handler, ConsumeResult<byte[], byte[]> ConsumeResult)> _consumeResultQueue = new();
 
-    private Task _coreTask;
-    private readonly IDelayCalculator _delayCalculator;
-    private readonly ILogger _logger;
+    private protected readonly IDelayCalculator _delayCalculator;
+    private protected readonly ILogger _logger;
+    private protected readonly string _nextTopic;
 
-    private readonly string _nextTopic;
-    private readonly IRateLimiter _rateLimiter;
-    private readonly string _retryGroupId;
-    private readonly int _retryIndex;
-    private readonly IProducer<byte[], byte[]> _retryProducer;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly TopicPartition _topicPartition;
-    private readonly CancellationTokenSource _workerTokenSource;
+    private protected readonly int _queueSizePauseThreshold;
+    private protected readonly IRateLimiter _rateLimiter;
+    private protected readonly string _retryGroupId;
+    private protected readonly int _retryIndex;
+    private protected readonly IProducer<byte[], byte[]> _retryProducer;
+    private protected readonly IServiceProvider _serviceProvider;
 
-    private bool _isPaused;
-    private bool _partitionRevoked;
+    private protected readonly object _startLock = new();
+    private protected readonly TopicPartition _topicPartition;
+    private protected readonly CancellationTokenSource _workerTokenSource;
 
+    private protected Task? _coreTask;
+    private protected bool _isPaused;
+    private protected bool _partitionRevoked;
+
+    /// <summary>
+    ///     <see cref="PartitionProcessorBase" /> processors messages placed on its queue. It is assigned to a particular
+    ///     partition and handles the allocation, loss and revoking events that affect that partition.
+    /// </summary>
+    /// <param name="logger">Logger that should be typed to the top class</param>
+    /// <param name="serviceProvider">Used to create scopes if needed</param>
+    /// <param name="delayCalculator">Calculator used to determine the delay between retries</param>
+    /// <param name="rateLimiter">Restricts the number of messages being processed globally</param>
+    /// <param name="consumer">Consumer that received the message</param>
+    /// <param name="topicPartition">Partition information</param>
+    /// <param name="retryProducer">Producer for pushing to the next retry queue if needed</param>
+    /// <param name="retryGroupId">Group Id of this consumer</param>
+    /// <param name="nextTopic">Retry Topic that will be pushed to on failure </param>
+    /// <param name="retryIndex">Current retry index; 0 = origin queue, 1 = first retry</param>
+    /// <param name="queueSizePauseThreshold">
+    ///     Message count in the queue before the partition is paused. Note: A large count
+    ///     increases memory usage, but is better for fast running tasks
+    /// </param>
     protected PartitionProcessorBase(ILogger logger,
         IServiceProvider serviceProvider,
         IDelayCalculator delayCalculator,
         IRateLimiter rateLimiter,
         IConsumer<byte[], byte[]> consumer, TopicPartition topicPartition,
-        IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex) {
+        IProducer<byte[], byte[]> retryProducer, string retryGroupId, string nextTopic, int retryIndex, int queueSizePauseThreshold = 20) {
         _serviceProvider = serviceProvider;
         _delayCalculator = delayCalculator;
+        _queueSizePauseThreshold = queueSizePauseThreshold;
         _rateLimiter = rateLimiter;
         _workerTokenSource = new CancellationTokenSource();
         _consumer = consumer;
@@ -56,8 +85,6 @@ public abstract class PartitionProcessorBase : IDisposable, IPartitionProcessor 
         _nextTopic = nextTopic;
         _retryIndex = retryIndex;
         _logger = logger;
-
-        _coreTask = DoWorkAsync();
     }
 
     public void Dispose() {
@@ -73,9 +100,9 @@ public abstract class PartitionProcessorBase : IDisposable, IPartitionProcessor 
     /// <param name="consumeResult"></param>
     public virtual void Enqueue<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult) where TResultHandler : IConsumerResultHandler {
         _consumeResultQueue.Enqueue((typeof(TResultHandler), consumeResult));
-
+        
         // if there are more in the queue than there should be, then pause the partition to halt the pulling of those messages
-        if (_consumeResultQueue.Count <= PauseThreshold) {
+        if (_consumeResultQueue.Count <= _queueSizePauseThreshold) {
             return;
         }
 
@@ -92,48 +119,57 @@ public abstract class PartitionProcessorBase : IDisposable, IPartitionProcessor 
     public virtual async Task RevokeAsync() {
         _logger.LogTrace("REVOKING self: {TopicPartition}", _topicPartition);
         _partitionRevoked = true;
-        await _coreTask;
+        if (_coreTask != null) {
+            await _coreTask;
+        }
     }
 
-
     public virtual void Start() {
-        _coreTask = DoWorkAsync();
+        lock (_startLock) {
+            if (_coreTask is { }) {
+                // throwing an exception as something isn't right if this is called twice
+                throw new CoreTaskAlreadyStartedException();
+            }
+
+            _coreTask = DoWorkAsync();
+        }
     }
 
     /// <summary>
     ///     Process items in the queue for this specific topic partition
-    /// </summary> 
+    /// </summary>
     protected virtual async Task DoWorkAsync() {
         await Task.Yield();
         var cancellationToken = _workerTokenSource.Token;
         while (CanContinue(cancellationToken)) {
             if (_consumeResultQueue.TryDequeue(out var tuple)) {
-                var consumeResult = tuple.ConsumeResult;
-                _logger.LogTrace("[{TopicPartition}] - Dequeued {Key}", _topicPartition, consumeResult.Message.Key);
-                try {
-                    var getNext = await CallHandler(consumeResult, cancellationToken, tuple);
-                    if (!getNext) {
-                        break;
-                    }
-                }
-                catch (Exception handledException) {
-                    await HandleException(handledException, consumeResult, cancellationToken);
-                }
-                finally {
-                    // _rateLimiter used inside CallHandler
-                    _rateLimiter.Release();
-                }
+                await ProcessDequeued(tuple, cancellationToken);
             }
             else {
-                await Task.Delay(100, cancellationToken);
-                // TODO: semaphore or something here rather than a delay on queue miss
+                // Delay Polling worked out as a better option than Reset Events.
+                // Reset events can get missed when a message event comes in before the event/semaphore is waited.
+                // Adding a timeout timespan means it's basically delay polling anyway 
+                await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
             }
 
-            // if is paused, then resume as a message has been added
-            if (_isPaused) {
+            if (_isPaused && CanContinue(cancellationToken)) {
                 _consumer.Resume(new[] { _topicPartition });
                 _isPaused = false;
             }
+        }
+    }
+
+    protected virtual async Task ProcessDequeued((Type Handler, ConsumeResult<byte[], byte[]> ConsumeResult) tuple, CancellationToken cancellationToken) {
+        var consumeResult = tuple.ConsumeResult;
+        _logger.LogTrace("[{TopicPartition}] - Dequeued {Key}", _topicPartition, consumeResult.Message.Key);
+        try {
+            if (await HandleMessage(consumeResult, cancellationToken, tuple)) {
+                _consumer.StoreOffset(consumeResult);
+            }
+        }
+        catch (Exception handledException) {
+            await HandleException(handledException, consumeResult, cancellationToken);
+            _consumer.StoreOffset(consumeResult); // need to set after handing off to retry
         }
     }
 
@@ -151,32 +187,54 @@ public abstract class PartitionProcessorBase : IDisposable, IPartitionProcessor 
     }
 
     protected virtual async Task PushToRetry(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken) {
-        await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message, cancellationToken);
-        _consumer.StoreOffset(consumeResult); // need to set after handing off to retry
+        var deliveryResult = await _retryProducer.ProduceAsync(_nextTopic, consumeResult.Message, cancellationToken);
+        await HandleRetryDeliveryResultAsync(deliveryResult, cancellationToken);
     }
 
-    protected virtual async Task<bool> CallHandler(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken,
+    /// <summary>
+    ///     Exposes the delivery result when pushing to the retry queue
+    /// </summary>
+    /// <param name="deliveryResult">Retry delivery result</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if handled</returns>
+    protected virtual Task HandleRetryDeliveryResultAsync(DeliveryResult<byte[], byte[]> deliveryResult, CancellationToken cancellationToken) {
+        return Task.CompletedTask;
+    }
+
+    protected virtual async Task<bool> HandleMessage(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken,
         (Type Handler, ConsumeResult<byte[], byte[]> ConsumeResult) tuple) {
         var delayTime = _delayCalculator.Calculate(consumeResult, _retryIndex);
 
         if (delayTime > DateTimeOffset.Now) {
-            var delayTimespan = delayTime - DateTimeOffset.Now;
-            var delayMs = Math.Max(delayTimespan.Milliseconds, 0);
-            await Task.Delay(delayMs, cancellationToken);
+            await DelayTillRetryTime(delayTime, cancellationToken);
         }
 
         await _rateLimiter.WaitAsync(cancellationToken);
-        if (cancellationToken.IsCancellationRequested) {
-            return false;
-        }
 
-        using (var serviceScope = _serviceProvider.CreateScope()) {
-            var handler = (IConsumerResultHandler)serviceScope.ServiceProvider.GetRequiredService(tuple.Handler);
-            await handler.HandleAsync(consumeResult, cancellationToken);
-        }
+        try {
+            if (cancellationToken.IsCancellationRequested) {
+                return false;
+            }
 
-        _consumer.StoreOffset(consumeResult); // don't put outside the loop due to the break
-        return true;
+            await HandleMessage(tuple.Handler, consumeResult, cancellationToken);
+
+            return true;
+        }
+        finally {
+            _rateLimiter.Release();
+        }
+    }
+
+    private async static Task DelayTillRetryTime(DateTimeOffset delayTime, CancellationToken cancellationToken) {
+        var delayTimespan = delayTime - DateTimeOffset.Now;
+        var delayMs = Math.Max(delayTimespan.Milliseconds, 0);
+        await Task.Delay(delayMs, cancellationToken);
+    }
+
+    protected virtual async Task HandleMessage(Type handlerType, ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken) {
+        using var serviceScope = _serviceProvider.CreateScope();
+        var handler = (IConsumerResultHandler)serviceScope.ServiceProvider.GetRequiredService(handlerType);
+        await handler.HandleAsync(consumeResult, cancellationToken);
     }
 
     protected virtual void SetTimestamp(ConsumeResult<byte[], byte[]> consumeResult) {

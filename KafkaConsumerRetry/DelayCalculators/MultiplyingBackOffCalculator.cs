@@ -16,5 +16,7 @@ public class MultiplyingBackOffCalculator : IDelayCalculator {
         return new DateTimeOffset(retryTime, TimeSpan.Zero);
     }
 
-    private static DateTime UnixTimestampMsToDateTime(double unixMillisecondsTimestamp) => Timestamp.UnixTimeEpoch + TimeSpan.FromMilliseconds(unixMillisecondsTimestamp);
+    private static DateTime UnixTimestampMsToDateTime(double unixMillisecondsTimestamp) {
+        return Timestamp.UnixTimeEpoch + TimeSpan.FromMilliseconds(unixMillisecondsTimestamp);
+    }
 }

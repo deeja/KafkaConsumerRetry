@@ -5,7 +5,7 @@ using KafkaConsumerRetry.Handlers;
 namespace KafkaConsumerRetry.Services;
 
 public interface IPartitionMessageManager {
-    void QueueConsumeResult<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult) where TResultHandler : IConsumerResultHandler;
+    Task QueueConsumeResult<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult) where TResultHandler : IConsumerResultHandler;
 
     void HandleLostPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list);
 

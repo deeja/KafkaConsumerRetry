@@ -20,11 +20,25 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
         _partitionProcessorFactory = partitionProcessorFactory;
     }
 
-    public virtual void QueueConsumeResult<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult)
+    public virtual async Task QueueConsumeResult<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult)
         where TResultHandler : IConsumerResultHandler {
         var topicPartition = consumeResult.TopicPartition;
-        var partitionQueue = _partitionQueues[topicPartition];
-        partitionQueue.Enqueue<TResultHandler>(consumeResult);
+
+        void Enqueue() {
+            var partitionQueue = _partitionQueues[topicPartition];
+            partitionQueue.Enqueue<TResultHandler>(consumeResult);
+        }
+
+        // very rare error here that occurs when a message is enqueued before the partition is added.
+        try {
+            Enqueue();
+        }
+        catch (KeyNotFoundException keyNotFoundException) {
+            var delay = TimeSpan.FromSeconds(1);
+            _logger.LogWarning(keyNotFoundException, "Partition key not found: {PartitionKey}. Delaying retry for {DelayTime}", topicPartition, delay);
+            await Task.Delay(delay);
+            Enqueue();
+        }
     }
 
     public virtual void HandleLostPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list) {
@@ -38,7 +52,7 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
     public virtual void HandleAssignedPartitions(IConsumer<byte[], byte[]> consumer, ConsumerConfig consumerConfig,
         List<TopicPartition> list,
         TopicNames topicNames, ProducerConfig producerConfig) {
-        _logger.LogInformation("ASSIGNED PARTITIONS {TopicPartitions}", list);
+        _logger.LogInformation("BEGIN ASSIGNED PARTITIONS {TopicPartitions}", list);
 
         // TODO: Remove this construction of the Retry Producer so it's a singleton somewhere. 
         // Leaving here so it's not per PartitionProcessor
@@ -50,6 +64,8 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
             partitionProcessor.Start();
             _partitionQueues.Add(topicPartition, partitionProcessor);
         }
+
+        _logger.LogInformation("END ASSIGNED PARTITIONS {TopicPartitions}", list);
     }
 
     public virtual void HandleRevokedPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list) {

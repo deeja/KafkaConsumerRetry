@@ -37,7 +37,6 @@ public class ConsumerFactory : IConsumerFactory {
     protected virtual IConsumer<byte[], byte[]> BuildConsumer(ConsumerConfig consumerConfig, TopicNames names,
         ProducerConfig producerConfig) {
         var consumerBuilder = new ConsumerBuilder<byte[], byte[]>(consumerConfig);
-
         consumerBuilder.SetPartitionsAssignedHandler((consumer, list) =>
             _messageManager.HandleAssignedPartitions(consumer, consumerConfig, list, names, producerConfig));
         consumerBuilder.SetPartitionsLostHandler((consumer, list) => _messageManager.HandleLostPartitions(consumer, list));
