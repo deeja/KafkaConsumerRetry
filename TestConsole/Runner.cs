@@ -19,7 +19,7 @@ public class Runner {
         _naming = naming;
     }
 
-    public async Task ExecuteAsync(CancellationToken cancellationToken) {
+    public async Task ExecuteAsync(int messageCount, CancellationToken cancellationToken) {
         var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var linkedCancellationToken = cancellationTokenSource.Token;
         var waitForAnyKeyAsync = WaitForAnyKeyAsync(cancellationTokenSource);
@@ -37,7 +37,7 @@ public class Runner {
         }
 
         Console.WriteLine("--- Generating messages ---");
-        await GenerateMessagesAsync(1000, linkedCancellationToken);
+        await GenerateMessagesAsync(messageCount, linkedCancellationToken);
         if (cancellationToken.IsCancellationRequested) {
             return;
         }

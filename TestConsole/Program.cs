@@ -1,6 +1,5 @@
 using KafkaConsumerRetry;
 using KafkaConsumerRetry.Handlers;
-using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
@@ -17,6 +16,6 @@ services.AddLogging(builder => builder.AddSimpleConsole(options => {
 services.AddSingleton<Runner>()
     .AddSingleton<IConsumerResultHandler, TestingResultHandler>();
 var sp = services.BuildServiceProvider();
-var requiredService = sp.GetRequiredService<Runner>();
+var runner = sp.GetRequiredService<Runner>();
 var cancellationToken = CancellationToken.None;
-await requiredService.ExecuteAsync(cancellationToken);
+await runner.ExecuteAsync(1000, cancellationToken);

@@ -11,7 +11,7 @@ public class ConsumerFactory : IConsumerFactory {
         _messageManager = messageManager;
     }
 
-    public IConsumer<byte[], byte[]> BuildOriginConsumer(KafkaRetryConfig config, TopicNames names) {
+    public virtual IConsumer<byte[], byte[]> BuildOriginConsumer(KafkaRetryConfig config, TopicNames names) {
         var cluster = config.OriginCluster;
         SetClusterDefaults(cluster);
         var consumerConfig = new ConsumerConfig(cluster);
@@ -19,7 +19,7 @@ public class ConsumerFactory : IConsumerFactory {
         return BuildConsumer(consumerConfig, names, producerConfig);
     }
 
-    public IConsumer<byte[], byte[]> BuildRetryConsumer(KafkaRetryConfig config, TopicNames names) {
+    public virtual IConsumer<byte[], byte[]> BuildRetryConsumer(KafkaRetryConfig config, TopicNames names) {
         var cluster = config.RetryCluster ?? config.OriginCluster;
         SetClusterDefaults(cluster);
         var consumerConfig = new ConsumerConfig(cluster);
@@ -34,18 +34,15 @@ public class ConsumerFactory : IConsumerFactory {
     }
 
 
-    private IConsumer<byte[], byte[]> BuildConsumer(ConsumerConfig consumerConfig, TopicNames names,
+    protected virtual IConsumer<byte[], byte[]> BuildConsumer(ConsumerConfig consumerConfig, TopicNames names,
         ProducerConfig producerConfig) {
         var consumerBuilder = new ConsumerBuilder<byte[], byte[]>(consumerConfig);
-        // TODO: Passing the TopicNaming through here even though it's a rubbish idea. Will figure it out later.
 
-        // Set the actions to occur on partitions coming and going. 
-        consumerBuilder.SetPartitionsLostHandler((consumer, list) =>
-            _messageManager.HandleLostPartitions(consumer, consumerConfig, list));
         consumerBuilder.SetPartitionsAssignedHandler((consumer, list) =>
             _messageManager.HandleAssignedPartitions(consumer, consumerConfig, list, names, producerConfig));
-        consumerBuilder.SetPartitionsRevokedHandler((consumer, list) =>
-            _messageManager.HandleRevokedPartitions(consumer, consumerConfig, list));
+        consumerBuilder.SetPartitionsLostHandler((consumer, list) => _messageManager.HandleLostPartitions(consumer, list));
+        consumerBuilder.SetPartitionsRevokedHandler((consumer, list) => _messageManager.HandleRevokedPartitions(consumer, list));
+
         return consumerBuilder.Build();
     }
 }

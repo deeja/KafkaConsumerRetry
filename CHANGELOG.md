@@ -4,9 +4,10 @@
 
 ### Changed
 - README.md
-- TestConsole: added logging and cancellation of tasks
+- TestConsole: added logging and cancellation of tasks + general maintenance 
 - ExampleProject: Various bits and pieces
-
+- Moved as much as of the initialisation as possible of `PartitionProcessor` into a new `IPartitionProcessorFactory`
+- Created abstract classes from a few of the core classes; created `sealed` versions of those classes 
 
 ### Added 
 - CHANGELOG.md

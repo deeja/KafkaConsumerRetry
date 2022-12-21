@@ -1,12 +1,14 @@
 ﻿using System.Text;
 using Confluent.Kafka;
 using KafkaConsumerRetry.Handlers;
-using KafkaConsumerRetry.Services;
 using Microsoft.Extensions.Logging;
 
 namespace TestConsole;
 
 internal class TestingResultHandler : IConsumerResultHandler {
+
+
+    private static int _count;
     private readonly ILogger<TestingResultHandler> _logger;
 
     public TestingResultHandler(ILogger<TestingResultHandler> logger) {
@@ -16,7 +18,9 @@ internal class TestingResultHandler : IConsumerResultHandler {
     public async Task HandleAsync(ConsumeResult<byte[], byte[]> consumeResult, CancellationToken cancellationToken) {
         var messageString = Encoding.UTF8.GetString(consumeResult.Message.Value);
 
-        _logger.LogInformation("Message: {MessageString} - Topic: {TopicPartitionOffset}", messageString,
+        Interlocked.Increment(ref _count);
+
+        _logger.LogInformation(" #{Count} - Message: {MessageString} - Topic: {TopicPartitionOffset}", _count, messageString,
             consumeResult.TopicPartitionOffset);
 
         switch (messageString) {
@@ -29,8 +33,9 @@ internal class TestingResultHandler : IConsumerResultHandler {
                 Environment.Exit(1);
                 break;
             case "THROW":
-                _logger.LogInformation("## Throwing exception ##");
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                var fromSeconds = TimeSpan.FromSeconds(5);
+                _logger.LogInformation("## Throwing exception in {TimeSpan} ##", fromSeconds);
+                await Task.Delay(fromSeconds, cancellationToken);
                 throw new GoBoomException();
             default:
                 _logger.LogInformation("## Wait and continue ##");
@@ -39,5 +44,3 @@ internal class TestingResultHandler : IConsumerResultHandler {
         }
     }
 }
-
-internal class GoBoomException : Exception { }

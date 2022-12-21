@@ -1,4 +1,5 @@
-﻿using KafkaConsumerRetry.DelayCalculators;
+﻿using Confluent.Kafka;
+using KafkaConsumerRetry.DelayCalculators;
 using KafkaConsumerRetry.Factories;
 using KafkaConsumerRetry.Services;
 using KafkaConsumerRetry.SupportTopicNaming;
@@ -18,6 +19,7 @@ public static class TypeRegistrationExtensions {
         return collection.AddSingleton<IDelayCalculator>(_ => new MultiplyingBackOffCalculator(delayBase))
             .AddSingleton<IProducerFactory, ProducerFactory>()
             .AddSingleton<IConsumerFactory, ConsumerFactory>()
+            .AddSingleton<IPartitionProcessorFactory, PartitionProcessorFactory>()
             .AddSingleton<IRateLimiter>(_ => new RateLimiter(maximumConcurrentTasks))
             .AddSingleton<IConsumerRunner, ConsumerRunner>()
             .AddSingleton<IPartitionMessageManager, PartitionMessageManager>()
