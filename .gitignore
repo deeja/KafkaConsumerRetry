@@ -794,3 +794,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 runtimes/
+
+# Custom
+build/

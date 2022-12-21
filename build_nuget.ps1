@@ -1,0 +1,1 @@
+ dotnet pack ./KafkaConsumerRetry --include-symbols --configuration Release -o ./build
