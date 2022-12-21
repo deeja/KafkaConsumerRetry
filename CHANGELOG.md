@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+### Changed
+### Removed
+
+### Added 
+
+## [0.2.1]
+
+### Removed
+- `docker-compose.test.yaml` as it was out of date
 ### Changed
 - README.md
 - TestConsole: added logging and cancellation of tasks + general maintenance 
@@ -16,6 +26,7 @@
 
 ### Fixed
 - `IDelayCalculator` returns a `DateTimeOffset` rather than a `TimeSpan`; timing could be wrong when value was eventually used.
+
 
 
 ## [0.1.4] - 2022-12-15

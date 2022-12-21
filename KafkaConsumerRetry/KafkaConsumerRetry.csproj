@@ -6,7 +6,7 @@
         <LangVersion>latest</LangVersion>
         <TargetFrameworks>net6.0</TargetFrameworks>
         <PackageId>KafkaConsumerRetry</PackageId>
-        <PackageVersion>0.1.4</PackageVersion>
+        <PackageVersion>0.2.1</PackageVersion>
         <Authors>deeja</Authors>
         <Description>Framework for the use of multiple Kafka timed retry queues; based on the Uber retry strategy</Description>
         <PackageIcon>icon.png</PackageIcon>
