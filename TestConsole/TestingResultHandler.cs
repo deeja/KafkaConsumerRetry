@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 using Confluent.Kafka;
 using KafkaConsumerRetry.Handlers;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,8 @@ internal class TestingResultHandler : IConsumerResultHandler {
 
 
     private static int _count;
+    
+    private static Stopwatch _timer = Stopwatch.StartNew();
     private readonly ILogger<TestingResultHandler> _logger;
 
     public TestingResultHandler(ILogger<TestingResultHandler> logger) {
@@ -20,9 +23,10 @@ internal class TestingResultHandler : IConsumerResultHandler {
 
         Interlocked.Increment(ref _count);
 
-        _logger.LogInformation(" #{Count} - Message: {MessageString} - Topic: {TopicPartitionOffset}", _count, messageString,
+        _logger.LogInformation("{Timer} #{Count}  - Message: {MessageString} - Topic: {TopicPartitionOffset}", _timer.Elapsed, _count, messageString,
             consumeResult.TopicPartitionOffset);
-
+        var delay = TimeSpan.FromSeconds(0);
+        
         switch (messageString) {
             case "DIE":
                 _logger.LogInformation("## Failing FAST ##");
@@ -33,13 +37,12 @@ internal class TestingResultHandler : IConsumerResultHandler {
                 Environment.Exit(1);
                 break;
             case "THROW":
-                var fromSeconds = TimeSpan.FromSeconds(5);
-                _logger.LogInformation("## Throwing exception in {TimeSpan} ##", fromSeconds);
-                await Task.Delay(fromSeconds, cancellationToken);
+                _logger.LogInformation("## Throwing exception in {TimeSpan} ##", delay);
+                await Task.Delay(delay, cancellationToken);
                 throw new GoBoomException();
             default:
-                _logger.LogInformation("## Wait and continue ##");
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                _logger.LogInformation("## Delaying return by {TimeSpan} ##", delay);
+                await Task.Delay(delay, cancellationToken);
                 break;
         }
     }

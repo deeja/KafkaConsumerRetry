@@ -19,19 +19,18 @@ public class Runner {
         _naming = naming;
     }
 
-    public async Task ExecuteAsync(int messageCount, CancellationToken cancellationToken) {
+    public async Task ExecuteAsync(int messageCount, CancellationToken cancellationToken, int partitions = 12, int retryAttempts = 3) {
         var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var linkedCancellationToken = cancellationTokenSource.Token;
         var waitForAnyKeyAsync = WaitForAnyKeyAsync(cancellationTokenSource);
 
-        var originalName = $"{_topicName}";
         if (cancellationToken.IsCancellationRequested) {
             return;
         }
 
         Console.WriteLine("--- Creating Topics ---");
 
-        await CreateTopicsAsync();
+        await CreateTopicsAsync(partitions, retryAttempts);
         if (cancellationToken.IsCancellationRequested) {
             return;
         }
@@ -44,7 +43,7 @@ public class Runner {
 
         Console.WriteLine("--- Starting Consumers ---");
         var retryServiceConfig = new KafkaRetryConfig {
-            RetryAttempts = 3,
+            RetryAttempts = retryAttempts,
             OriginCluster = new Dictionary<string, string> {
                 ["group.id"] = "my-group-name",
                 ["bootstrap.servers"] = "localhost:9092",
@@ -55,7 +54,7 @@ public class Runner {
             return;
         }
 
-        var topicNaming = _naming.GetTopicNaming(originalName, retryServiceConfig);
+        var topicNaming = _naming.GetTopicNaming(_topicName, retryServiceConfig);
         if (cancellationToken.IsCancellationRequested) {
             return;
         }
@@ -74,6 +73,7 @@ public class Runner {
                 break;
             }
         }
+
         Console.WriteLine("--- Cancelling ---");
         tokenSource.Cancel();
     }
@@ -87,22 +87,21 @@ public class Runner {
         for (var i = 0; i < numberOfMessages; i++) {
             var messageValue = i % 5 == 0 ? "THROW" : "WAIT";
             var message = new Message<byte[], byte[]> {
-                Key = Encoding.UTF8.GetBytes($"{i}-{DateTime.Now.ToString(CultureInfo.InvariantCulture)}"),
+                Key = Encoding.UTF8.GetBytes($"{Guid.NewGuid()}-{i}-{DateTime.Now.ToString(CultureInfo.InvariantCulture)}"),
                 Value = Encoding.UTF8.GetBytes(messageValue)
             };
-            await producer.ProduceAsync(_topicName, message, cancellationToken);
+            var deliveryResult = await producer.ProduceAsync(_topicName, message, cancellationToken);
         }
     }
 
-    private async Task CreateTopicsAsync() {
+    private async Task CreateTopicsAsync(int partitions, int retries) {
         AdminClientBuilder clientBuilder = new(new AdminClientConfig {
             BootstrapServers = "localhost:9092"
         });
 
         var adminClient = clientBuilder.Build();
-        var partitions = 12;
-        var topics = new[] { $"{_topicName}", $"{_topicName}.retry.0", $"{_topicName}.retry.1", $"{_topicName}.retry.2", $"{_topicName}.dlq" };
-        foreach (var topic in topics) {
+
+        foreach (var topic in GetTopicNames(retries)) {
             try {
                 Console.WriteLine($"Creating: {topic} - Partitions: {partitions}");
                 await adminClient.CreateTopicsAsync(new TopicSpecification[] { new() { Name = topic, NumPartitions = partitions } });
@@ -111,5 +110,14 @@ public class Runner {
                 Console.WriteLine(e);
             }
         }
+    }
+
+    private IEnumerable<string> GetTopicNames(int retries) {
+        yield return $"{_topicName}";
+        for (var i = 0; i < retries; i++) {
+            yield return $"{_topicName}.retry.{i}";
+        }
+
+        yield return $"{_topicName}.dlq";
     }
 }

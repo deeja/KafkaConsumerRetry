@@ -7,7 +7,21 @@ using TestConsole;
 
 IServiceCollection services = new ServiceCollection();
 
-services.AddKafkaConsumerRetry(30, TimeSpan.FromSeconds(2));
+// Time used by DelayCalculator
+var delayBase = TimeSpan.Zero;
+// Messages that can be processed at a time
+var maximumConcurrentTasks = 10;
+// Test messages to create
+var messageCount = 1000;
+// Partitions per topic created
+var partitionsPerTopic = 12;
+// Reattempt times
+var retryAttempts = 1;
+
+// Topic count = Origin + DLQ + Retries
+
+
+services.AddKafkaConsumerRetry(maximumConcurrentTasks, delayBase);
 services.AddLogging(builder => builder.AddSimpleConsole(options => {
     options.ColorBehavior = LoggerColorBehavior.Default;
     options.IncludeScopes = true;
@@ -18,4 +32,5 @@ services.AddSingleton<Runner>()
 var sp = services.BuildServiceProvider();
 var runner = sp.GetRequiredService<Runner>();
 var cancellationToken = CancellationToken.None;
-await runner.ExecuteAsync(1000, cancellationToken);
+
+await runner.ExecuteAsync(messageCount, cancellationToken, partitionsPerTopic, retryAttempts);
