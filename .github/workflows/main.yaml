@@ -25,4 +25,4 @@ jobs:
       - name: Stryker Setup
         run: dotnet tool restore
       - name: Stryker Run
-        run: dotnet tool stryker
+        run: dotnet stryker
