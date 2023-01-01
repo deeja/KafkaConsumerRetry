@@ -8,6 +8,8 @@
 
 ### Added 
 - Stryker mutation testing
+- Github workflow
+
 
 ## [0.2.1]
 

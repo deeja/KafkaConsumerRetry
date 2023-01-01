@@ -22,3 +22,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
       - name: Test
         run: dotnet test --no-restore --verbosity normal
+      - name: Stryker Setup
+        run: dotnet tool restore
+      - name: Stryker Run
+        run: dotnet tool stryker
