@@ -7,6 +7,7 @@
 ### Removed
 
 ### Added 
+- Stryker mutation testing
 
 ## [0.2.1]
 
