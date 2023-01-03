@@ -9,10 +9,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{FF514E4F-AD53-43C6-860F-8A6F5E94F737}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
-		docker-compose.test.yaml = docker-compose.test.yaml
 		docker-compose.yaml = docker-compose.yaml
 		LICENSE.txt = LICENSE.txt
 		CHANGELOG.md = CHANGELOG.md
+		.github\workflows\main.yaml = .github\workflows\main.yaml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleProject", "ExampleProject\ExampleProject.csproj", "{65C6DF67-6F54-46D2-996A-D14007D7811A}"
