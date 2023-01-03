@@ -20,7 +20,7 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
         _partitionProcessorFactory = partitionProcessorFactory;
     }
 
-    public virtual async Task QueueConsumeResult<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult)
+    public virtual async Task QueueConsumeResultAsync<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult)
         where TResultHandler : IConsumerResultHandler {
         var topicPartition = consumeResult.TopicPartition;
 

@@ -27,21 +27,22 @@ public class ConsumerRunner : IConsumerRunner {
         originConsumer.Subscribe(topicNames.Origin);
         retryConsumer.Subscribe(topicNames.Retries);
 
-        var originConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(originConsumer, token), token);
-        var retryConsumerTask = Task.Run(() => ConsumeAsync<TResultHandler>(retryConsumer, token), token);
+        var originConsumerTask = ConsumeAsync<TResultHandler>(originConsumer, token);
+        var retryConsumerTask = ConsumeAsync<TResultHandler>(retryConsumer, token);
         await Task.WhenAll(originConsumerTask, retryConsumerTask);
     }
 
-    private void ConsumeAsync<TResultHandler>(IConsumer<byte[], byte[]> consumer,
+    private async Task ConsumeAsync<TResultHandler>(IConsumer<byte[], byte[]> consumer,
         CancellationToken cancellationToken) where TResultHandler : IConsumerResultHandler {
+        await Task.Yield();
         while (!cancellationToken.IsCancellationRequested) {
-            var consumeResult = consumer.Consume(cancellationToken);
-
-            if (cancellationToken.IsCancellationRequested) {
-                break;
+            try {
+                var consumeResult = consumer.Consume(cancellationToken);
+                await _messageManager.QueueConsumeResultAsync<TResultHandler>(consumeResult);
             }
-
-            _messageManager.QueueConsumeResult<TResultHandler>(consumeResult);
+            catch (TaskCanceledException) {
+                // handled in loop condition
+            }
         }
     }
 }

@@ -56,7 +56,7 @@ public class RunConsumersAsyncShould {
     }
     
     [Fact(Timeout = 500)]
-    public async Task Move_Consumed_Messages_To_PartitionMessageManager() {
+    public async Task Move_Origin_Consumed_Messages_To_PartitionMessageManager() {
         var consumerFactory = new Mock<IConsumerFactory>();
         var messageManager = new Mock<IPartitionMessageManager>();
         var sut = new ConsumerRunner(consumerFactory.Object, messageManager.Object);
@@ -74,7 +74,7 @@ public class RunConsumersAsyncShould {
 
 
         originConsumer.Setup(consumer => consumer.Consume(tokenSourceToken)).Returns(consumeResult);
-        messageManager.Setup(manager => manager.QueueConsumeResult<DummyHandler>(consumeResult)).Callback(() => tokenSource.Cancel());
+        messageManager.Setup(manager => manager.QueueConsumeResultAsync<DummyHandler>(consumeResult)).Callback(() => tokenSource.Cancel());
 
         try {
             await sut.RunConsumersAsync<DummyHandler>(retryConfig, names, tokenSourceToken);
@@ -83,7 +83,39 @@ public class RunConsumersAsyncShould {
             // expected exception
         }
         
-        messageManager.Verify(manager => manager.QueueConsumeResult<DummyHandler>(consumeResult));
+        messageManager.Verify(manager => manager.QueueConsumeResultAsync<DummyHandler>(consumeResult));
+
+        
+    }
+    [Fact(Timeout = 500)]
+    public async Task Move_Retry_Consumed_Messages_To_PartitionMessageManager() {
+        var consumerFactory = new Mock<IConsumerFactory>();
+        var messageManager = new Mock<IPartitionMessageManager>();
+        var sut = new ConsumerRunner(consumerFactory.Object, messageManager.Object);
+        var names = new TopicNames("origin", new[] { "retry" }, "dead_letter");
+        var retryConfig = new KafkaRetryConfig();
+        var originConsumer = new Mock<IConsumer<byte[], byte[]>>();
+        var retryConsumer = new Mock<IConsumer<byte[], byte[]>>();
+        var tokenSource = new CancellationTokenSource();
+        var consumeResult = new ConsumeResult<byte[], byte[]>();
+
+        consumerFactory.Setup(factory => factory.BuildOriginConsumer(retryConfig, names)).Returns(originConsumer.Object);
+        consumerFactory.Setup(factory => factory.BuildRetryConsumer(retryConfig, names)).Returns(retryConsumer.Object);
+
+        var tokenSourceToken = tokenSource.Token;
+
+
+        retryConsumer.Setup(consumer => consumer.Consume(tokenSourceToken)).Returns(consumeResult);
+        messageManager.Setup(manager => manager.QueueConsumeResultAsync<DummyHandler>(consumeResult)).Callback(() => tokenSource.Cancel());
+
+        try {
+            await sut.RunConsumersAsync<DummyHandler>(retryConfig, names, tokenSourceToken);
+        }
+        catch (TaskCanceledException) {
+            // expected exception
+        }
+        
+        messageManager.Verify(manager => manager.QueueConsumeResultAsync<DummyHandler>(consumeResult));
 
         
     }
