@@ -8,6 +8,7 @@ namespace KafkaConsumerRetry.Services;
 /// <summary>
 ///     Starts and subscribes to messages
 /// </summary>
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class ConsumerRunner : IConsumerRunner {
     private readonly IConsumerFactory _consumerFactory;
     private readonly IPartitionMessageManager _messageManager;
