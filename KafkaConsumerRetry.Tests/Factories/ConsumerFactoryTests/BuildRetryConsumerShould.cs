@@ -3,7 +3,7 @@ using Moq;
 
 namespace KafkaConsumerRetry.Tests.Factories.ConsumerFactoryTests;
 
-public class BuildOriginConsumerShould {
+public class BuildRetryConsumerShould {
 
     private readonly TopicNames _topicNames = new("origin", new[] { "retry" }, "dlq");
 
@@ -29,7 +29,7 @@ public class BuildOriginConsumerShould {
             RetryCluster = null
         };
 
-        sut.BuildOriginConsumer(kafkaRetryConfig, _topicNames);
+        sut.BuildRetryConsumer(kafkaRetryConfig, _topicNames);
 
         localConsumerBuilder.Verify(builder => builder.BuildConsumer(consumerConfig, producerConfig, _topicNames));
     }
@@ -67,7 +67,7 @@ public class BuildOriginConsumerShould {
 
         var sut = new ConsumerFactory(localConsumerBuilder.Object, configBuilderMock.Object);
 
-        sut.BuildOriginConsumer(config, _topicNames);
+        sut.BuildRetryConsumer(config, _topicNames);
         mockFactory.Verify();
     }
 
@@ -75,7 +75,7 @@ public class BuildOriginConsumerShould {
     ///     Make sure the correct settings are used where retry is supplied
     /// </summary>
     [Fact]
-    public void Use_Origin_Settings_For_Consumer_And_Retry_For_Consumer_If_Retry_Supplied() {
+    public void Use_Retry_Settings_For_Consumer_And_Retry_For_Consumer_If_Retry_Supplied() {
         var mockFactory = new MockRepository(MockBehavior.Strict);
         var localConsumerBuilder = mockFactory.Create<ILocalConsumerBuilder>();
         var consumerMock = mockFactory.Create<IConsumer<byte[], byte[]>>();
@@ -90,7 +90,7 @@ public class BuildOriginConsumerShould {
             ["group.id"] = "retry"
         };
 
-        configBuilderMock.Setup(builder => builder.BuildConsumerConfig(It.Is<IDictionary<string, string>>(dict => dict.Equals(originCluster))))
+        configBuilderMock.Setup(builder => builder.BuildConsumerConfig(It.Is<IDictionary<string, string>>(dict => dict.Equals(retryCluster))))
             .Returns(() => consumerConfig);
         configBuilderMock.Setup(builder => builder.BuildProducerConfig(It.Is<IDictionary<string, string>>(dict => dict.Equals(retryCluster))))
             .Returns(() => producerConfig);
@@ -105,7 +105,7 @@ public class BuildOriginConsumerShould {
             RetryCluster = retryCluster
         };
 
-        sut.BuildOriginConsumer(config, _topicNames);
+        sut.BuildRetryConsumer(config, _topicNames);
         mockFactory.Verify();
     }
 }

@@ -4,11 +4,13 @@
 
 ### Fixed
 ### Changed
+
 ### Removed
 
 ### Added 
 - Stryker mutation testing
 - Github workflow
+- Classes that produce the kafka configs, consumers and consumer builders. Was to tight and needed splitting for testing.
 
 
 ## [0.2.1]
