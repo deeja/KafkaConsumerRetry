@@ -8,6 +8,7 @@ public class PartitionProcessorRepository : IPartitionProcessorRepository {
     private readonly ILogger<PartitionProcessorRepository> _logger;
 
     private readonly Dictionary<TopicPartition, IPartitionProcessor> _partitionQueues = new();
+    private readonly object _dictLock = new();
 
     public PartitionProcessorRepository(ILogger<PartitionProcessorRepository> logger) {
         _logger = logger;
@@ -23,7 +24,10 @@ public class PartitionProcessorRepository : IPartitionProcessorRepository {
         var topicPartition = consumeResult.TopicPartition;
 
         void Enqueue() {
-            var partitionProcessor = _partitionQueues[topicPartition];
+            IPartitionProcessor partitionProcessor;
+            lock (_dictLock) {
+                partitionProcessor = _partitionQueues[topicPartition];
+            }
             partitionProcessor.Enqueue<TResultHandler>(consumeResult);
         }
 
@@ -37,13 +41,14 @@ public class PartitionProcessorRepository : IPartitionProcessorRepository {
             }
             catch (KeyNotFoundException keyNotFoundException) {
                 var delay = TimeSpan.FromMilliseconds(100);
-                _logger.LogWarning(keyNotFoundException, "Partition key not found: {PartitionKey}. Delaying retry for {DelayTime}", topicPartition, delay);
 
                 // if we have retried enough
                 if (count > 10) {
+                    _logger.LogCritical(keyNotFoundException, "Partition key not found: {PartitionKey}. Failed!", topicPartition);
                     throw;
                 }
 
+                _logger.LogWarning(keyNotFoundException, "Partition key not found: {PartitionKey}. Delaying retry for {DelayTime}", topicPartition, delay);
                 await Task.Delay(delay);
             }
 
@@ -54,8 +59,12 @@ public class PartitionProcessorRepository : IPartitionProcessorRepository {
 
 
     public virtual async Task RemoveProcessorAsync(TopicPartition topicPartition, RemovePartitionAction action) {
-        var partitionProcessor = _partitionQueues[topicPartition];
-        _partitionQueues.Remove(topicPartition);
+        IPartitionProcessor partitionProcessor;
+        lock (_dictLock) {
+            partitionProcessor = _partitionQueues[topicPartition];
+            _partitionQueues.Remove(topicPartition);
+        }
+
         switch (action) {
             case RemovePartitionAction.Cancel:
                 partitionProcessor.Cancel();
@@ -71,7 +80,10 @@ public class PartitionProcessorRepository : IPartitionProcessorRepository {
 
 
     public virtual void AddProcessor(IPartitionProcessor partitionProcessor, TopicPartition topicPartition) {
-        _partitionQueues.Add(topicPartition, partitionProcessor);
+        lock (_dictLock) {
+            _partitionQueues.Add(topicPartition, partitionProcessor);
+        }
+
         partitionProcessor.Start();
     }
 }
