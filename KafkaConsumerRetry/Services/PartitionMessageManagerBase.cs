@@ -2,7 +2,6 @@
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Factories;
 using KafkaConsumerRetry.Handlers;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace KafkaConsumerRetry.Services;
@@ -12,11 +11,11 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
 
     private readonly IPartitionProcessorFactory _partitionProcessorFactory;
     private readonly Dictionary<TopicPartition, IPartitionProcessor> _partitionQueues = new();
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IProducerFactory _producerFactory;
 
-    protected PartitionMessageManagerBase(IPartitionProcessorFactory partitionProcessorFactory, ILogger logger, IServiceProvider serviceProvider) {
+    protected PartitionMessageManagerBase(IPartitionProcessorFactory partitionProcessorFactory, ILogger logger, IServiceProvider serviceProvider, IProducerFactory producerFactory) {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        _producerFactory = producerFactory;
         _partitionProcessorFactory = partitionProcessorFactory;
     }
 
@@ -29,7 +28,7 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
             partitionQueue.Enqueue<TResultHandler>(consumeResult);
         }
 
-        // very rare error here that occurs when a message is enqueued before the partition is added.
+        // TODO: very rare error here that occurs when a message is enqueued before the partition is added
         try {
             Enqueue();
         }
@@ -54,9 +53,8 @@ public abstract class PartitionMessageManagerBase : IPartitionMessageManager {
         TopicNames topicNames, ProducerConfig producerConfig) {
         _logger.LogInformation("BEGIN ASSIGNED PARTITIONS {TopicPartitions}", list);
 
-        // TODO: Remove this construction of the Retry Producer so it's a singleton somewhere. 
-        // Leaving here so it's not per PartitionProcessor
-        var retryProducer = _serviceProvider.GetRequiredService<IProducerFactory>().BuildRetryProducer(producerConfig);
+        // TODO: Figure out a way to reuse this retry producer across all relevant partitions
+        var retryProducer = _producerFactory.BuildRetryProducer(producerConfig);
         foreach (var topicPartition in list) {
             var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(topicPartition.Topic, topicNames);
             var partitionProcessor = _partitionProcessorFactory.Create(consumer, topicPartition, currentIndexAndNextTopic.CurrentIndex,
