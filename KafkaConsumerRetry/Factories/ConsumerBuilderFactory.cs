@@ -4,7 +4,7 @@ namespace KafkaConsumerRetry.Factories;
 
 public class ConsumerBuilderFactory : IConsumerBuilderFactory {
 
-    public virtual ConsumerBuilder<byte[], byte[]> CreateConsumerBuilder(ConsumerConfig consumerConfig) {
-        return new ConsumerBuilder<byte[], byte[]>(consumerConfig);
+    public virtual IConsumerBuilder CreateConsumerBuilder(ConsumerConfig consumerConfig) {
+        return new LocalConsumerBuilder(new ConsumerBuilder<byte[], byte[]>(consumerConfig));
     }
 }

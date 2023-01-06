@@ -1,4 +1,5 @@
 ﻿using KafkaConsumerRetry.Factories;
+using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
 using Moq;
 
 namespace KafkaConsumerRetry.Tests.Factories.ConsumerFactoryTests;
@@ -9,7 +10,7 @@ public class BuildRetryConsumerShould {
 
     [Fact]
     public void Build_Consumer() {
-        var localConsumerBuilder = new Mock<ILocalConsumerBuilder>();
+        var localConsumerBuilder = new Mock<ILocalConsumerFactory>();
         var consumerMock = new Mock<IConsumer<byte[], byte[]>>();
         var configBuilderMock = new Mock<KafkaConfigBuilder>();
         var consumerConfig = new ConsumerConfig();
@@ -41,7 +42,7 @@ public class BuildRetryConsumerShould {
     [Fact]
     public void Use_Origin_Settings_For_Consumer_And_Retry_Where_No_Retry_Specified() {
         var mockFactory = new MockRepository(MockBehavior.Strict);
-        var localConsumerBuilder = mockFactory.Create<ILocalConsumerBuilder>();
+        var localConsumerBuilder = mockFactory.Create<ILocalConsumerFactory>();
         var consumerMock = mockFactory.Create<IConsumer<byte[], byte[]>>();
         var configBuilderMock = mockFactory.Create<KafkaConfigBuilder>();
         var consumerConfig = new ConsumerConfig();
@@ -77,7 +78,7 @@ public class BuildRetryConsumerShould {
     [Fact]
     public void Use_Retry_Settings_For_Consumer_And_Retry_For_Consumer_If_Retry_Supplied() {
         var mockFactory = new MockRepository(MockBehavior.Strict);
-        var localConsumerBuilder = mockFactory.Create<ILocalConsumerBuilder>();
+        var localConsumerBuilder = mockFactory.Create<ILocalConsumerFactory>();
         var consumerMock = mockFactory.Create<IConsumer<byte[], byte[]>>();
         var configBuilderMock = mockFactory.Create<KafkaConfigBuilder>();
         var consumerConfig = new ConsumerConfig();

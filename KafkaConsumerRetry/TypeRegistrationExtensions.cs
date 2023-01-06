@@ -19,7 +19,7 @@ public static class TypeRegistrationExtensions {
             .AddSingleton<IProducerFactory, ProducerFactory>()
             .AddSingleton<IConsumerFactory, ConsumerFactory>()
             .AddSingleton<IKafkaConfigBuilder, KafkaConfigBuilder>()
-            .AddSingleton<ILocalConsumerBuilder, LocalConsumerBuilder>()
+            .AddSingleton<IConsumerBuilder, LocalConsumerBuilder>()
             .AddSingleton<IConsumerBuilderFactory, ConsumerBuilderFactory>()
             .AddSingleton<IPartitionProcessorFactory, PartitionProcessorFactory>()
             .AddSingleton<IRateLimiter>(_ => new RateLimiter(maximumConcurrentTasks))

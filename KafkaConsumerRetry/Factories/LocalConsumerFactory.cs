@@ -4,11 +4,11 @@ using KafkaConsumerRetry.Services;
 
 namespace KafkaConsumerRetry.Factories;
 
-public class LocalConsumerBuilder : ILocalConsumerBuilder {
+public class LocalConsumerFactory : ILocalConsumerFactory {
     private readonly IConsumerBuilderFactory _consumerBuilderFactory;
     private readonly IPartitionMessageManager _messageManager;
 
-    public LocalConsumerBuilder(IPartitionMessageManager messageManager, IConsumerBuilderFactory consumerBuilderFactory) {
+    public LocalConsumerFactory(IPartitionMessageManager messageManager, IConsumerBuilderFactory consumerBuilderFactory) {
         _messageManager = messageManager;
         _consumerBuilderFactory = consumerBuilderFactory;
     }
@@ -20,7 +20,7 @@ public class LocalConsumerBuilder : ILocalConsumerBuilder {
         return consumerBuilder.Build();
     }
 
-    protected virtual void SetPartitionEventHandlers(ConsumerBuilder<byte[], byte[]> consumerBuilder, ConsumerConfig consumerConfig,
+    protected virtual void SetPartitionEventHandlers(IConsumerBuilder consumerBuilder, ConsumerConfig consumerConfig,
         ProducerConfig producerConfig,
         TopicNames names) {
         consumerBuilder.SetPartitionsAssignedHandler((consumer, list) =>
