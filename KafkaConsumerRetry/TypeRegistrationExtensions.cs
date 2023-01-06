@@ -24,7 +24,7 @@ public static class TypeRegistrationExtensions {
             .AddSingleton<IConsumerBuilderFactory, ConsumerBuilderFactory>()
             .AddSingleton<IProducerBuilderFactory, ProducerBuilderFactory>()
             .AddSingleton<IPartitionProcessorFactory, PartitionProcessorFactory>()
-            .AddSingleton<IRateLimiter>(_ => new RateLimiter(maximumConcurrentTasks))
+            .AddSingleton<IRateLimiter>(_ => new SemaphoreRateLimiter(maximumConcurrentTasks))
             .AddSingleton<IConsumerRunner, ConsumerRunner>()
             .AddSingleton<IPartitionMessageManager, PartitionMessageManager>()
             .AddSingleton<ITopicNaming, TopicNaming>();

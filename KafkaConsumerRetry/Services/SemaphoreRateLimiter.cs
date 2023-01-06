@@ -1,10 +1,10 @@
 ﻿namespace KafkaConsumerRetry.Services;
 
-internal class RateLimiter : IRateLimiter {
+public class SemaphoreRateLimiter : IRateLimiter {
     private readonly SemaphoreSlim _semaphore;
 
-    internal RateLimiter(int maxCount) {
-        _semaphore = new SemaphoreSlim(maxCount);
+    public SemaphoreRateLimiter(int maxCount) {
+        _semaphore = new SemaphoreSlim(maxCount, maxCount);
     }
 
     public void Release() {
@@ -12,6 +12,7 @@ internal class RateLimiter : IRateLimiter {
     }
 
     public async Task WaitAsync(CancellationToken cancellationToken) {
+        await Task.Yield();
         await _semaphore.WaitAsync(cancellationToken);
     }
 }
