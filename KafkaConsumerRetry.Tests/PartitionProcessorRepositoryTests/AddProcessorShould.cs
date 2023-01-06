@@ -1,20 +1,18 @@
 ﻿using KafkaConsumerRetry.Services;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace KafkaConsumerRetry.Tests.PartitionProcessorRepositoryTests;
 
 public class AddProcessorShould {
-
-
-    readonly TopicPartition _topicPartition = new("origin", new Partition(2));
+    private readonly NullLogger<PartitionProcessorRepository> _nullLogger = new();
+    private readonly TopicPartition _topicPartition = new("origin", new Partition(2));
 
     [Fact]
     public void Start_Processor() {
         var mockRepository = new MockRepository(MockBehavior.Default);
         var mockPartitionProcessor = mockRepository.Create<IPartitionProcessor>();
-        var mockLogger = mockRepository.Create<ILogger<PartitionProcessorRepository>>();
-        var sut = new PartitionProcessorRepository(mockLogger.Object);
+        var sut = new PartitionProcessorRepository(_nullLogger);
 
         sut.AddProcessor(mockPartitionProcessor.Object, _topicPartition);
 
@@ -25,8 +23,7 @@ public class AddProcessorShould {
     public void Throw_When_Processor_Already_Exists_For_Partition() {
         var mockRepository = new MockRepository(MockBehavior.Default);
         var mockPartitionProcessor = mockRepository.Create<IPartitionProcessor>();
-        var mockLogger = mockRepository.Create<ILogger<PartitionProcessorRepository>>();
-        var sut = new PartitionProcessorRepository(mockLogger.Object);
+        var sut = new PartitionProcessorRepository(_nullLogger);
 
         sut.AddProcessor(mockPartitionProcessor.Object, _topicPartition);
 

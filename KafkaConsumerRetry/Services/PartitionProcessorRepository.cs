@@ -23,24 +23,36 @@ public class PartitionProcessorRepository : IPartitionProcessorRepository {
         var topicPartition = consumeResult.TopicPartition;
 
         void Enqueue() {
-            var partitionQueue = _partitionQueues[topicPartition];
-            partitionQueue.Enqueue<TResultHandler>(consumeResult);
+            var partitionProcessor = _partitionQueues[topicPartition];
+            partitionProcessor.Enqueue<TResultHandler>(consumeResult);
         }
 
-        // TODO: very rare error here that occurs when a message is enqueued before the partition is added
-        try {
-            Enqueue();
-        }
-        catch (KeyNotFoundException keyNotFoundException) {
-            var delay = TimeSpan.FromSeconds(1);
-            _logger.LogWarning(keyNotFoundException, "Partition key not found: {PartitionKey}. Delaying retry for {DelayTime}", topicPartition, delay);
-            await Task.Delay(delay);
-            Enqueue();
+        var count = 0;
+
+        while (true) {
+            // occasional error here that occurs when a message is enqueued before the partition processor is added
+            try {
+                Enqueue();
+                break;
+            }
+            catch (KeyNotFoundException keyNotFoundException) {
+                var delay = TimeSpan.FromMilliseconds(100);
+                _logger.LogWarning(keyNotFoundException, "Partition key not found: {PartitionKey}. Delaying retry for {DelayTime}", topicPartition, delay);
+
+                // if we have retried enough
+                if (count > 10) {
+                    throw;
+                }
+
+                await Task.Delay(delay);
+            }
+
+            count++;
         }
     }
 
 
-    
+
     public virtual async Task RemoveProcessorAsync(TopicPartition topicPartition, RemovePartitionAction action) {
         var partitionProcessor = _partitionQueues[topicPartition];
         _partitionQueues.Remove(topicPartition);
