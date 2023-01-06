@@ -10,7 +10,7 @@ public class CreateConsumerBuilderShould {
         var consumerConfig = new ConsumerConfig();
         var consumerBuilder = sut.CreateConsumerBuilder(consumerConfig);
         // Get config via reflection
-        var value = consumerBuilder.GetType().GetProperty("Config",  BindingFlags.NonPublic | BindingFlags.Instance ).GetValue(consumerBuilder)!;
+        var value = consumerBuilder.GetType().GetProperty("Config",  BindingFlags.NonPublic | BindingFlags.Instance )!.GetValue(consumerBuilder)!;
         value.Should().BeSameAs(consumerConfig);
     }
 }
