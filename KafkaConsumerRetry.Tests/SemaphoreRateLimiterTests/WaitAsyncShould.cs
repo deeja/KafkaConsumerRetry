@@ -23,4 +23,14 @@ public class WaitAsyncShould {
         await waiting;
         waiting.IsCompleted.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Throw_OperationCanceledException_On_Cancellation() {
+        var rateLimiter = new SemaphoreRateLimiter(1);
+        CancellationTokenSource source = new CancellationTokenSource();
+        await rateLimiter.WaitAsync(source.Token);
+        // no release so the second call will be blocking
+        source.CancelAfter(TimeSpan.FromMilliseconds(10));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => rateLimiter.WaitAsync(source.Token));
+    }
 }
