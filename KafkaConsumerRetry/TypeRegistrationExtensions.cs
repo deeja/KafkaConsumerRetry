@@ -1,7 +1,6 @@
 ﻿using KafkaConsumerRetry.DelayCalculators;
 using KafkaConsumerRetry.Factories;
 using KafkaConsumerRetry.Services;
-using KafkaConsumerRetry.SupportTopicNaming;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace KafkaConsumerRetry;
@@ -23,10 +22,11 @@ public static class TypeRegistrationExtensions {
             .AddSingleton<IConsumerBuilder, LocalConsumerBuilder>()
             .AddSingleton<IConsumerBuilderFactory, ConsumerBuilderFactory>()
             .AddSingleton<IProducerBuilderFactory, ProducerBuilderFactory>()
+            .AddSingleton<IPartitionProcessorRepository, PartitionProcessorRepository>()
             .AddSingleton<IPartitionProcessorFactory, PartitionProcessorFactory>()
             .AddSingleton<IRateLimiter>(_ => new SemaphoreRateLimiter(maximumConcurrentTasks))
             .AddSingleton<IConsumerRunner, ConsumerRunner>()
-            .AddSingleton<IPartitionMessageManager, PartitionMessageManager>()
+            .AddSingleton<IPartitionEventHandler, PartitionEventHandler>()
             .AddSingleton<ITopicNaming, TopicNaming>();
     }
 }

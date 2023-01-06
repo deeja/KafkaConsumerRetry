@@ -10,7 +10,7 @@ public class RunConsumersAsyncShould {
     [Fact]
     public async Task Subscribe_To_Origin_Topic() {
         var consumerFactory = new Mock<IConsumerFactory>();
-        var messageManager = new Mock<IPartitionMessageManager>();
+        var messageManager = new Mock<IPartitionProcessorRepository>();
         var sut = new ConsumerRunner(consumerFactory.Object, messageManager.Object);
         var names = new TopicNames("origin", new[] { "retry" }, "dead_letter");
         var retryConfig = new KafkaRetryConfig();
@@ -34,7 +34,7 @@ public class RunConsumersAsyncShould {
     [Fact]
     public async Task Subscribe_To_Retry_Topics() {
         var consumerFactory = new Mock<IConsumerFactory>();
-        var messageManager = new Mock<IPartitionMessageManager>();
+        var messageManager = new Mock<IPartitionProcessorRepository>();
         var sut = new ConsumerRunner(consumerFactory.Object, messageManager.Object);
         var names = new TopicNames("origin", new[] { "retry" }, "dead_letter");
         var retryConfig = new KafkaRetryConfig();
@@ -58,7 +58,7 @@ public class RunConsumersAsyncShould {
     [Fact(Timeout = 500)]
     public async Task Move_Origin_Consumed_Messages_To_PartitionMessageManager() {
         var consumerFactory = new Mock<IConsumerFactory>();
-        var messageManager = new Mock<IPartitionMessageManager>();
+        var messageManager = new Mock<IPartitionProcessorRepository>();
         var sut = new ConsumerRunner(consumerFactory.Object, messageManager.Object);
         var names = new TopicNames("origin", new[] { "retry" }, "dead_letter");
         var retryConfig = new KafkaRetryConfig();
@@ -90,7 +90,7 @@ public class RunConsumersAsyncShould {
     [Fact(Timeout = 500)]
     public async Task Move_Retry_Consumed_Messages_To_PartitionMessageManager() {
         var consumerFactory = new Mock<IConsumerFactory>();
-        var messageManager = new Mock<IPartitionMessageManager>();
+        var messageManager = new Mock<IPartitionProcessorRepository>();
         var sut = new ConsumerRunner(consumerFactory.Object, messageManager.Object);
         var names = new TopicNames("origin", new[] { "retry" }, "dead_letter");
         var retryConfig = new KafkaRetryConfig();

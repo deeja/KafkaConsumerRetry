@@ -1,53 +1,47 @@
 ﻿using Confluent.Kafka;
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Factories;
-using KafkaConsumerRetry.Handlers;
 using Microsoft.Extensions.Logging;
 
 namespace KafkaConsumerRetry.Services;
 
-public class PartitionMessageManager : IPartitionMessageManager {
+public class PartitionEventHandler : IPartitionEventHandler {
     private readonly ILogger _logger;
-
     private readonly IPartitionProcessorFactory _partitionProcessorFactory;
-    private readonly Dictionary<TopicPartition, IPartitionProcessor> _partitionQueues = new();
+    private readonly IPartitionProcessorRepository _partitionProcessorRepository;
     private readonly IProducerFactory _producerFactory;
 
-    public PartitionMessageManager(IPartitionProcessorFactory partitionProcessorFactory, IProducerFactory producerFactory, ILogger<PartitionMessageManager> logger) {
+    public PartitionEventHandler(IPartitionProcessorFactory partitionProcessorFactory, IProducerFactory producerFactory, ILogger<PartitionEventHandler> logger,
+        IPartitionProcessorRepository partitionProcessorRepository) {
         _logger = logger;
+        _partitionProcessorRepository = partitionProcessorRepository;
         _producerFactory = producerFactory;
         _partitionProcessorFactory = partitionProcessorFactory;
     }
 
-    public virtual async Task QueueConsumeResultAsync<TResultHandler>(ConsumeResult<byte[], byte[]> consumeResult)
-        where TResultHandler : IConsumerResultHandler {
-        var topicPartition = consumeResult.TopicPartition;
 
-        void Enqueue() {
-            var partitionQueue = _partitionQueues[topicPartition];
-            partitionQueue.Enqueue<TResultHandler>(consumeResult);
-        }
 
-        // TODO: very rare error here that occurs when a message is enqueued before the partition is added
-        try {
-            Enqueue();
-        }
-        catch (KeyNotFoundException keyNotFoundException) {
-            var delay = TimeSpan.FromSeconds(1);
-            _logger.LogWarning(keyNotFoundException, "Partition key not found: {PartitionKey}. Delaying retry for {DelayTime}", topicPartition, delay);
-            await Task.Delay(delay);
-            Enqueue();
-        }
-    }
-
+    /// <summary>
+    ///     Stops and removes partition handlers when partitions are lost
+    /// </summary>
+    /// <param name="consumer"></param>
+    /// <param name="list"></param>
     public virtual void HandleLostPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list) {
         _logger.LogInformation("LOST PARTITIONS {TopicPartitions}", list);
         foreach (var topicPartitionOffset in list) {
-            _partitionQueues[topicPartitionOffset.TopicPartition].Cancel();
-            _partitionQueues.Remove(topicPartitionOffset.TopicPartition);
+            _ = _partitionProcessorRepository.RemoveProcessorAsync(topicPartitionOffset.TopicPartition, RemovePartitionAction.Cancel);
         }
     }
 
+
+    /// <summary>
+    ///     Adds and starts partition handlers when partitions are assigned
+    /// </summary>
+    /// <param name="consumer"></param>
+    /// <param name="consumerConfig"></param>
+    /// <param name="list"></param>
+    /// <param name="topicNames"></param>
+    /// <param name="producerConfig"></param>
     public virtual void HandleAssignedPartitions(IConsumer<byte[], byte[]> consumer, ConsumerConfig consumerConfig,
         List<TopicPartition> list,
         TopicNames topicNames, ProducerConfig producerConfig) {
@@ -59,25 +53,28 @@ public class PartitionMessageManager : IPartitionMessageManager {
             var currentIndexAndNextTopic = GetCurrentIndexAndNextTopic(topicPartition.Topic, topicNames);
             var partitionProcessor = _partitionProcessorFactory.Create(consumer, topicPartition, currentIndexAndNextTopic.CurrentIndex,
                 currentIndexAndNextTopic.NextTopic, consumerConfig.GroupId, retryProducer);
-            partitionProcessor.Start();
-            _partitionQueues.Add(topicPartition, partitionProcessor);
+            _partitionProcessorRepository.AddProcessor(partitionProcessor, topicPartition);
         }
 
         _logger.LogInformation("END ASSIGNED PARTITIONS {TopicPartitions}", list);
     }
 
+    /// <summary>
+    ///     Waits till messages have been  and removes partition handlers when partitions are revoked
+    /// </summary>
+    /// <param name="consumer"></param>
+    /// <param name="list"></param>
     public virtual void HandleRevokedPartitions(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> list) {
         _logger.LogInformation("BEGIN REVOKED PARTITIONS {TopicPartitions}", list);
         List<Task> revokeWaiters = new();
         foreach (var topicPartitionOffset in list) {
-            var topicPartition = topicPartitionOffset.TopicPartition;
-            var partitionQueue = _partitionQueues[topicPartition];
-            _partitionQueues.Remove(topicPartition);
-            revokeWaiters.Add(partitionQueue.RevokeAsync());
+            revokeWaiters.Add(_partitionProcessorRepository.RemoveProcessorAsync(topicPartitionOffset.TopicPartition, RemovePartitionAction.Revoke));
         }
 
-        _ = Task.WhenAll(revokeWaiters.ToArray()).ContinueWith(task => _logger.LogInformation("END REVOKED PARTITIONS {TopicPartitions}", list));
+        // Method needs to wait till the tasks are finished before revoking
+        Task.WhenAll(revokeWaiters.ToArray()).ContinueWith(_ => _logger.LogInformation("END REVOKED PARTITIONS {TopicPartitions}", list)).GetAwaiter().GetResult();
     }
+
 
     /// <summary>
     ///     Gets the current index of the topic, and also the next topic to push to

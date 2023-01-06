@@ -11,12 +11,12 @@ namespace KafkaConsumerRetry.Services;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class ConsumerRunner : IConsumerRunner {
     private readonly IConsumerFactory _consumerFactory;
-    private readonly IPartitionMessageManager _messageManager;
+    private readonly IPartitionProcessorRepository _eventHandler;
 
     public ConsumerRunner(IConsumerFactory consumerFactory,
-        IPartitionMessageManager messageManager) {
+        IPartitionProcessorRepository eventHandler) {
         _consumerFactory = consumerFactory;
-        _messageManager = messageManager;
+        _eventHandler = eventHandler;
     }
 
     public virtual async Task RunConsumersAsync<TResultHandler>(KafkaRetryConfig kafkaRetryConfig,
@@ -38,7 +38,7 @@ public class ConsumerRunner : IConsumerRunner {
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 var consumeResult = consumer.Consume(cancellationToken);
-                await _messageManager.QueueConsumeResultAsync<TResultHandler>(consumeResult);
+                await _eventHandler.QueueConsumeResultAsync<TResultHandler>(consumeResult);
             }
             catch (TaskCanceledException) {
                 // handled in loop condition

@@ -3,7 +3,6 @@ using ExampleProject;
 using KafkaConsumerRetry;
 using KafkaConsumerRetry.Configuration;
 using KafkaConsumerRetry.Services;
-using KafkaConsumerRetry.SupportTopicNaming;
 using Microsoft.Extensions.DependencyInjection;
 
 var collection = new ServiceCollection();

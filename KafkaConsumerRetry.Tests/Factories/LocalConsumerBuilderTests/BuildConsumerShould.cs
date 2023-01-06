@@ -17,7 +17,7 @@ public class BuildConsumerShould {
     [Fact]
     public void Create_Consumer_Using_Config() {
         var repository = new MockRepository(MockBehavior.Default);
-        var messageManager = repository.Create<IPartitionMessageManager>();
+        var messageManager = repository.Create<IPartitionEventHandler>();
         var consumerBuilderFactory = repository.Create<IConsumerBuilderFactory>();
         var mockConsumer = repository.Create<IConsumer<byte[], byte[]>>();
 
@@ -34,7 +34,7 @@ public class BuildConsumerShould {
     [Fact]
     public void Set_Partition_AssignedHandler() {
         var repository = new MockRepository(MockBehavior.Loose);
-        var messageManager = repository.Create<IPartitionMessageManager>();
+        var messageManager = repository.Create<IPartitionEventHandler>();
         var consumerBuilderFactory = repository.Create<IConsumerBuilderFactory>();
         var consumerBuilderMock = repository.Create<IConsumerBuilder>();
 
@@ -60,7 +60,7 @@ public class BuildConsumerShould {
     [Fact]
     public void Set_PartitionLostHandler() {
         var repository = new MockRepository(MockBehavior.Loose);
-        var messageManager = repository.Create<IPartitionMessageManager>();
+        var messageManager = repository.Create<IPartitionEventHandler>();
         var consumerBuilderFactory = repository.Create<IConsumerBuilderFactory>();
         var consumerBuilderMock = repository.Create<IConsumerBuilder>();
 
@@ -86,7 +86,7 @@ public class BuildConsumerShould {
     [Fact]
     public void Set_PartitionsRevokedHandler() {
         var repository = new MockRepository(MockBehavior.Loose);
-        var messageManager = repository.Create<IPartitionMessageManager>();
+        var messageManager = repository.Create<IPartitionEventHandler>();
         var consumerBuilderFactory = repository.Create<IConsumerBuilderFactory>();
         var consumerBuilderMock = repository.Create<IConsumerBuilder>();
 

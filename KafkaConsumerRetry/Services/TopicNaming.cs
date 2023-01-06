@@ -1,6 +1,6 @@
 ﻿using KafkaConsumerRetry.Configuration;
 
-namespace KafkaConsumerRetry.SupportTopicNaming;
+namespace KafkaConsumerRetry.Services;
 
 public class TopicNaming
     : ITopicNaming {
